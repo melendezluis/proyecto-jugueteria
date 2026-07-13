@@ -42,7 +42,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
           <span className="text-6xl block mb-4">🐱</span>
-          <h1 className="text-3xl font-bold text-orange-600">Juguetería El Gato</h1>
+          <h1 className="text-3xl font-bold text-orange-600">El Gato</h1>
           <p className="text-gray-500 mt-2">Crea tu cuenta</p>
         </div>
 

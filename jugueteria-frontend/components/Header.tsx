@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image'; // 👈 Agregar import de Image
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 
@@ -12,9 +13,17 @@ export default function Header() {
     <header className="bg-white shadow-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-6 py-5 flex justify-between items-center">
         <Link href="/" className="flex items-center gap-3">
-          <span className="text-5xl">🐱</span>
+          <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-orange-500 bg-orange-50 flex-shrink-0">{/* 👈 Ajusta el tamaño según tu logo */}
+            <Image
+              src="/images/gato7.png" // 👈 Cambia por el nombre de tu logo
+              alt="El Gato - Juguetería"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
           <div>
-            <h1 className="text-3xl font-bold text-orange-600">Juguetería El Gato</h1>
+            <h1 className="text-3xl font-bold text-orange-600">El Gato</h1>
             <p className="text-sm text-gray-500 -mt-1">Juguetes que hacen feliz</p>
           </div>
         </Link>
