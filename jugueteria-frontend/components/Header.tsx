@@ -36,6 +36,9 @@ export default function Header() {
               <span className="text-sm text-gray-500">
                 Hola, <span className="text-orange-600 font-semibold">{user?.name}</span>
               </span>
+              <Link href="/orders" className="hover:text-orange-600 transition-colors text-sm">
+                Mis pedidos
+              </Link>
               <button
                 onClick={logout}
                 className="hover:text-orange-600 transition-colors text-sm"

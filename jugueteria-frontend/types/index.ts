@@ -99,3 +99,46 @@ export interface CartItem {
   quantity: number;
   variant?: ProductVariant;
 }
+
+export interface OrderItem {
+  id: number;
+  product_id: number | null;
+  product_name: string;
+  product_image: string | null;
+  unit_price: number;
+  quantity: number;
+  total: number;
+  color: string | null;
+  size: string | null;
+}
+
+export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'completed' | 'cancelled';
+
+export interface Order {
+  id: number;
+  order_number: string;
+  subtotal: number;
+  shipping: number;
+  total: number;
+  status: OrderStatus;
+  status_label: string;
+  shipping_fullname: string;
+  shipping_phone: string | null;
+  shipping_address: string;
+  shipping_city: string;
+  shipping_notes: string | null;
+  items: OrderItem[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrderResponse {
+  success: boolean;
+  data: Order;
+}
+
+export interface OrdersResponse {
+  success: boolean;
+  data: Order[];
+  pagination: Pagination;
+}

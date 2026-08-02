@@ -24,14 +24,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('token');
+  });
+  const [loading, setLoading] = useState(() => !!token);
   const router = useRouter();
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('token');
-    if (savedToken) {
-      setToken(savedToken);
+    if (token) {
       getUserApi()
         .then(res => setUser(res.data))
         .catch(() => {
@@ -39,10 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setToken(null);
         })
         .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
     }
-  }, []);
+  }, [token]);
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await loginApi(email, password);

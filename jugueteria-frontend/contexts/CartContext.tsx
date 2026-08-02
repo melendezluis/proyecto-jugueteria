@@ -24,21 +24,19 @@ function getCartKey(productId: number, variantId?: number): string {
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
+  const [items, setItems] = useState<CartItem[]>(() => {
     try {
       const saved = localStorage.getItem('cart');
-      if (saved) setItems(JSON.parse(saved));
-    } catch { }
-    setLoaded(true);
-  }, []);
+      return saved ? (JSON.parse(saved) as CartItem[]) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    if (loaded) localStorage.setItem('cart', JSON.stringify(items));
-  }, [items, loaded]);
+    localStorage.setItem('cart', JSON.stringify(items));
+  }, [items]);
 
   const addItem = useCallback((product: Product, quantity = 1, variant?: ProductVariant) => {
     setItems(prev => {

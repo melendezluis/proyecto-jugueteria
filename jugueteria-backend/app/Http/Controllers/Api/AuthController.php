@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Spatie\Permission\Models\Role;
 
 class AuthController
 {
@@ -23,6 +24,11 @@ class AuthController
             'password' => Hash::make($validated['password']),
         ]);
 
+        $clientRole = Role::where('name', 'client')->first();
+        if ($clientRole) {
+            $user->assignRole($clientRole);
+        }
+
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
@@ -33,6 +39,7 @@ class AuthController
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
+                    'roles' => $user->getRoleNames(),
                 ],
                 'token' => $token,
             ]
@@ -64,6 +71,7 @@ class AuthController
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
+                    'roles' => $user->getRoleNames(),
                 ],
                 'token' => $token,
             ]
@@ -88,6 +96,7 @@ class AuthController
                 'id' => $request->user()->id,
                 'name' => $request->user()->name,
                 'email' => $request->user()->email,
+                'roles' => $request->user()->getRoleNames(),
             ]
         ]);
     }

@@ -3,6 +3,8 @@ import type {
   SingleProductResponse,
   CategoriesResponse,
   BrandsResponse,
+  OrderResponse,
+  OrdersResponse,
 } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
@@ -23,7 +25,10 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.message || `API error: ${res.status}`);
+    const error = new Error(body.message || `API error: ${res.status}`) as Error & { errors?: Record<string, string[]>; status?: number };
+    error.errors = body.errors;
+    error.status = res.status;
+    throw error;
   }
   return res.json();
 }
@@ -68,6 +73,29 @@ export function logoutApi() {
 
 export function getUserApi() {
   return fetchApi<{ success: boolean; data: { id: number; name: string; email: string } }>('/user');
+}
+
+// Orders
+export interface CreateOrderPayload {
+  shipping_fullname: string;
+  shipping_phone?: string;
+  shipping_address: string;
+  shipping_city: string;
+  shipping_notes?: string;
+  shipping?: number;
+  items: { product_id: number; quantity: number; variant_id?: number }[];
+}
+
+export function createOrder(payload: CreateOrderPayload) {
+  return fetchApi<OrderResponse>('/orders', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function getOrders() {
+  return fetchApi<OrdersResponse>('/orders');
+}
+
+export function getOrder(id: number) {
+  return fetchApi<OrderResponse>(`/orders/${id}`);
 }
 
 
