@@ -9,6 +9,13 @@ import type {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
+export function getImageUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  const base = API_URL.replace(/\/api\/?$/, '');
+  return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
+}
+
 function getToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('token');
@@ -96,6 +103,23 @@ export function getOrders() {
 
 export function getOrder(id: number) {
   return fetchApi<OrderResponse>(`/orders/${id}`);
+}
+
+// Mercado Pago
+export interface PreferenceResponse {
+  success: boolean;
+  data: {
+    init_point: string;
+    preference_id: string;
+  };
+}
+
+export function createPreference(orderId: number) {
+  return fetchApi<PreferenceResponse>(`/orders/${orderId}/checkout`, { method: 'POST' });
+}
+
+export function getPaymentStatus(orderId: number) {
+  return fetchApi<OrderResponse>(`/orders/${orderId}/payment-status`);
 }
 
 

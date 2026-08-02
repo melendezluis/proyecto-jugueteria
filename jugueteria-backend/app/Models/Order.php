@@ -17,6 +17,10 @@ class Order extends Model
         'shipping',
         'total',
         'status',
+        'preference_id',
+        'payment_id',
+        'payment_method',
+        'paid_at',
         'shipping_fullname',
         'shipping_phone',
         'shipping_address',
@@ -28,6 +32,7 @@ class Order extends Model
         'subtotal' => 'decimal:2',
         'shipping' => 'decimal:2',
         'total' => 'decimal:2',
+        'paid_at' => 'datetime',
     ];
 
     protected static function booted()

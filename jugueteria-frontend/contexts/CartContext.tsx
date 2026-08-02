@@ -25,6 +25,7 @@ function getCartKey(productId: number, variantId?: number): string {
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(() => {
+    if (typeof window === 'undefined') return [];
     try {
       const saved = localStorage.getItem('cart');
       return saved ? (JSON.parse(saved) as CartItem[]) : [];
@@ -39,19 +40,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items]);
 
   const addItem = useCallback((product: Product, quantity = 1, variant?: ProductVariant) => {
+    const availableStock = variant ? variant.stock : product.stock;
+
+    if (availableStock <= 0) {
+      setIsOpen(true);
+      return;
+    }
+
     setItems(prev => {
       const key = getCartKey(product.id, variant?.id);
       const existing = prev.find(
         item => getCartKey(item.product.id, item.variant?.id) === key
       );
       if (existing) {
+        const newQuantity = Math.min(existing.quantity + quantity, availableStock);
         return prev.map(item =>
           getCartKey(item.product.id, item.variant?.id) === key
-            ? { ...item, quantity: item.quantity + quantity }
+            ? { ...item, quantity: newQuantity }
             : item
         );
       }
-      return [...prev, { product, quantity, variant }];
+      return [...prev, { product, quantity: Math.min(quantity, availableStock), variant }];
     });
     setIsOpen(true);
   }, []);
@@ -80,7 +89,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = items.reduce(
-    (sum, item) => sum + (item.product.offer_price ?? item.product.price) * item.quantity,
+    (sum, item) =>
+      sum +
+      ((item.product.offer_price ?? item.product.price) + (item.variant?.price_extra ?? 0)) *
+        item.quantity,
     0
   );
 
