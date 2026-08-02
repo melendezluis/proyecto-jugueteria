@@ -2,6 +2,7 @@
 
 import { useCart } from '@/contexts/CartContext';
 import { useEffect, useRef } from 'react';
+import Link from 'next/link';
 
 export default function CartSidebar() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, totalPrice } = useCart();
@@ -115,9 +116,13 @@ export default function CartSidebar() {
               <span className="font-semibold text-gray-800">Total</span>
               <span className="font-bold text-orange-600 text-2xl">S/ {totalPrice.toFixed(2)}</span>
             </div>
-            <button className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-4 rounded-2xl transition-all text-lg">
+            <Link
+              href="/checkout"
+              onClick={closeCart}
+              className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-4 rounded-2xl transition-all text-lg text-center block"
+            >
               Ir a pagar
-            </button>
+            </Link>
           </div>
         )}
       </div>

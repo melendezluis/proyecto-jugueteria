@@ -30,8 +30,8 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register(name, email, password, passwordConfirmation);
-    } catch (err: any) {
-      setError(err.message || 'Error al registrarse');
+    } catch (err) {
+      setError((err as Error).message || 'Error al registrarse');
     } finally {
       setLoading(false);
     }
