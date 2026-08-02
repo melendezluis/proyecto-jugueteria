@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getOrder } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,10 +9,17 @@ import type { Order } from '@/types';
 
 export default function OrderConfirmationPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.replace('/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
 
   useEffect(() => {
     if (authLoading || !isAuthenticated) return;

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
+import { getImageUrl } from '@/services/api';
 import type { Product } from '@/types';
 
 interface ProductCardProps {
@@ -11,12 +12,23 @@ interface ProductCardProps {
 export default function ProductCard({ product }: ProductCardProps) {
   const { addItem } = useCart();
   const hasOffer = product.offer_price !== null && product.offer_price < product.price;
+  const mainImage = product.images.find(img => img.is_main)?.image_path
+    ?? product.images[0]?.image_path
+    ?? null;
 
   return (
     <div className="bg-white rounded-3xl shadow hover:shadow-xl transition-all duration-300 overflow-hidden group flex flex-col">
       <Link href={`/products/${product.slug}`} className="block">
         <div className="h-64 bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center text-8xl group-hover:scale-110 transition-transform relative">
-          <span>🧸</span>
+          {mainImage ? (
+            <img
+              src={getImageUrl(mainImage) ?? undefined}
+              alt={product.name}
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+            />
+          ) : (
+            <span>🧸</span>
+          )}
           {hasOffer && (
             <span className="absolute top-3 left-3 bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-full">
               Oferta
@@ -57,9 +69,14 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
           <button
             onClick={() => addItem(product)}
-            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-4 rounded-2xl transition-all active:scale-95"
+            disabled={product.stock <= 0}
+            className={`w-full font-semibold py-4 rounded-2xl transition-all active:scale-95 ${
+              product.stock > 0
+                ? 'bg-orange-600 hover:bg-orange-700 text-white'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            }`}
           >
-            Agregar al carrito
+            {product.stock > 0 ? 'Agregar al carrito' : 'Agotado'}
           </button>
         </div>
       </div>

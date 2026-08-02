@@ -1,58 +1,98 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ProductCard from '@/components/ProductCard';
 import { getProducts, getCategories } from '@/services/api';
-import type { Product, Category } from '@/types';
+import type { Product, Category, Pagination } from '@/types';
 import Image from 'next/image';
+
+const PER_PAGE = 12;
 
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<Pagination>({ current_page: 1, last_page: 1, per_page: PER_PAGE, total: 0 });
+  const searchRef = useRef('');
 
   useEffect(() => {
-    Promise.all([getProducts(), getCategories()])
-      .then(([productsData, categoriesData]) => {
-        setProducts(productsData.data);
-        setCategories(categoriesData.data);
+    getCategories()
+      .then(res => setCategories(res.data))
+      .catch(error => console.error('Error cargando categorías:', error));
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const next = searchTerm.trim();
+      if (next === searchRef.current) return;
+      searchRef.current = next;
+      setDebouncedSearch(next);
+      setPage(1);
+      setLoading(true);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    const params: Record<string, string> = { per_page: String(PER_PAGE), page: String(page) };
+    if (debouncedSearch) params.search = debouncedSearch;
+    if (selectedCategory !== null) params.category_id = String(selectedCategory);
+
+    let ignore = false;
+    getProducts(params)
+      .then(res => {
+        if (ignore) return;
+        setProducts(res.data);
+        setPagination(res.pagination);
         setLoading(false);
       })
       .catch(error => {
+        if (ignore) return;
         console.error('Error:', error);
         setLoading(false);
       });
-  }, []);
+    return () => { ignore = true; };
+  }, [page, debouncedSearch, selectedCategory]);
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === null || product.category?.id === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const selectCategory = (id: number | null) => {
+    if (id !== selectedCategory) {
+      setSelectedCategory(id);
+      setPage(1);
+      setLoading(true);
+    }
+  };
+
+  const goToPage = (nextPage: number) => {
+    const clamped = Math.min(Math.max(nextPage, 1), pagination.last_page);
+    if (clamped !== page) {
+      setPage(clamped);
+      setLoading(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#FFE4B5] to-[#FFDAB9]">
       <div className="max-w-7xl mx-auto px-6 py-6">
-        {/* 👇 LOGO O TÍTULO PRINCIPAL CON FUENTE ELEGANTE */}
-        
-          <div className="flex justify-center items-center gap-4 w-full mb-6"> {/* 👈 Contenedor flex con alineación vertical */}
-            <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-orange-500 bg-orange-50 flex-shrink-0">
-                <Image
-                  src="/images/gato7.png"
-                  alt="El Gato - Juguetería"
-                  fill
-                  className="object-contain"
-                  priority
-                  />
-            </div>
+        <div className="flex justify-center items-center gap-4 w-full mb-6">
+          <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-orange-500 bg-orange-50 flex-shrink-0">
+            <Image
+              src="/images/gato7.png"
+              alt="El Gato - Juguetería"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
           <div>
             <h1 className="text-7xl font-bold text-orange-600">El Gato</h1>
             <p className="text-sm text-gray-900 -mt-1">Juguetes que hacen felíz a niños y adultos</p>
           </div>
-      </div>
-        
+        </div>
 
         <div className="flex items-center gap-4 mb-6">
           <div className="flex-1 max-w-xl">
@@ -73,10 +113,10 @@ export default function Home() {
             </h3>
             <div className="space-y-1">
               <button
-                onClick={() => setSelectedCategory(null)}
+                onClick={() => selectCategory(null)}
                 className={`w-full text-left px-5 py-3 rounded-2xl font-medium transition-all font-inter ${
-                  selectedCategory === null 
-                    ? 'bg-orange-600 text-white' 
+                  selectedCategory === null
+                    ? 'bg-orange-600 text-white'
                     : 'hover:bg-gray-100 text-gray-700'
                 }`}
               >
@@ -85,10 +125,10 @@ export default function Home() {
               {categories.map(cat => (
                 <button
                   key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
+                  onClick={() => selectCategory(cat.id)}
                   className={`w-full text-left px-5 py-3 rounded-2xl font-medium transition-all font-inter ${
-                    selectedCategory === cat.id 
-                      ? 'bg-orange-600 text-white' 
+                    selectedCategory === cat.id
+                      ? 'bg-orange-600 text-white'
                       : 'hover:bg-gray-100 text-gray-700'
                   }`}
                 >
@@ -106,7 +146,7 @@ export default function Home() {
                   : 'Todos los productos'}
               </h2>
               <p className="text-gray-500 text-lg font-inter">
-                {filteredProducts.length} productos
+                {pagination.total} {pagination.total === 1 ? 'producto' : 'productos'}
               </p>
             </div>
 
@@ -116,7 +156,7 @@ export default function Home() {
                   Cargando juguetes...
                 </p>
               </div>
-            ) : filteredProducts.length === 0 ? (
+            ) : products.length === 0 ? (
               <div className="text-center py-20">
                 <span className="text-6xl block mb-4">🔍</span>
                 <p className="text-2xl text-gray-500 font-playfair">
@@ -127,11 +167,43 @@ export default function Home() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                {filteredProducts.map(product => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                  {products.map(product => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+
+                {pagination.last_page > 1 && (
+                  <div className="flex items-center justify-center gap-4 mt-10">
+                    <button
+                      onClick={() => goToPage(page - 1)}
+                      disabled={page <= 1}
+                      className={`px-6 py-3 rounded-full font-semibold transition-all ${
+                        page <= 1
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          : 'bg-orange-600 hover:bg-orange-700 text-white'
+                      }`}
+                    >
+                      Anterior
+                    </button>
+                    <span className="text-gray-700 font-medium font-inter">
+                      Página {page} de {pagination.last_page}
+                    </span>
+                    <button
+                      onClick={() => goToPage(page + 1)}
+                      disabled={page >= pagination.last_page}
+                      className={`px-6 py-3 rounded-full font-semibold transition-all ${
+                        page >= pagination.last_page
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          : 'bg-orange-600 hover:bg-orange-700 text-white'
+                      }`}
+                    >
+                      Siguiente
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
