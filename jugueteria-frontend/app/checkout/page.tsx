@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
-import { createOrder } from '@/services/api';
+import { createOrder, createPreference } from '@/services/api';
 import { getImageUrl } from '@/services/api';
 
 const SHIPPING_COST = 10;
@@ -60,7 +60,13 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
       });
 
       clearCart();
-      router.push(`/order-confirmation/${res.data.id}`);
+
+      try {
+        const preference = await createPreference(res.data.id);
+        window.location.href = preference.data.init_point;
+      } catch {
+        router.push(`/order-confirmation/${res.data.id}`);
+      }
     } catch (err) {
       const error = err as ApiError;
       if (error.errors) {

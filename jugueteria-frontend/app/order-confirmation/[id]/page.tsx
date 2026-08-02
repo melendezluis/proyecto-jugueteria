@@ -1,19 +1,34 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { getOrder } from '@/services/api';
+import { getOrder, getPaymentStatus, createPreference } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Order } from '@/types';
+
+interface ApiError extends Error {
+  status?: number;
+}
+
+const PAYMENT_STATUS_LABEL: Record<string, string> = {
+  success: 'Tu pago fue procesado correctamente.',
+  pending: 'Tu pago está en proceso. Te avisaremos apenas se confirme.',
+  failure: 'El pago no se completó. Puedes intentarlo nuevamente.',
+};
 
 export default function OrderConfirmationPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState('');
+
+  const paymentNotice = searchParams.get('status');
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -33,6 +48,30 @@ export default function OrderConfirmationPage() {
         setLoading(false);
       });
   }, [id, isAuthenticated, authLoading]);
+
+  useEffect(() => {
+    if (!order || order.status !== 'pending') return;
+    const timer = setInterval(() => {
+      getPaymentStatus(Number(id))
+        .then(res => setOrder(res.data))
+        .catch(() => {});
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [order, id]);
+
+  async function handlePay() {
+    setPaying(true);
+    setPayError('');
+    try {
+      const preference = await createPreference(Number(id));
+      window.location.href = preference.data.init_point;
+    } catch (err) {
+      const error = err as ApiError;
+      setPayError(error.message || 'No se pudo iniciar el pago');
+    } finally {
+      setPaying(false);
+    }
+  }
 
   if (loading || authLoading) {
     return (
@@ -54,16 +93,52 @@ export default function OrderConfirmationPage() {
     );
   }
 
+  const isPaid = order.status === 'paid';
+
   return (
     <div className="bg-gray-50 min-h-full">
       <div className="max-w-3xl mx-auto px-6 py-12 text-center">
         <div className="bg-white rounded-3xl shadow-sm p-10">
-          <span className="text-7xl block mb-6">🎉</span>
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">¡Gracias por tu compra!</h1>
+          <span className="text-7xl block mb-6">{isPaid ? '🎉' : '🧸'}</span>
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">
+            {isPaid ? '¡Pago confirmado!' : '¡Gracias por tu compra!'}
+          </h1>
           <p className="text-gray-500 mb-6">
             Tu pedido <span className="font-semibold text-orange-600">{order.order_number}</span> ha sido
             registrado con éxito.
           </p>
+
+          {isPaid && (
+            <div className="bg-green-50 text-green-700 rounded-2xl p-4 mb-6 font-medium">
+              Tu pago fue confirmado. Pronto procesaremos tu envío.
+            </div>
+          )}
+
+          {!isPaid && (
+            <div className="bg-amber-50 rounded-2xl p-6 mb-6">
+              <p className="font-semibold text-amber-800 mb-1">Tu pedido está pendiente de pago</p>
+              <p className="text-amber-700 text-sm mb-4">
+                Completa el pago con Yape, Plin, tarjeta u otro medio para confirmar tu compra.
+              </p>
+              {payError && <p className="text-red-600 text-sm mb-3">{payError}</p>}
+              <button
+                onClick={handlePay}
+                disabled={paying}
+                className="bg-orange-600 hover:bg-orange-700 disabled:bg-orange-400 text-white font-semibold px-8 py-3 rounded-full transition-all"
+              >
+                {paying ? 'Redirigiendo a Mercado Pago...' : 'Pagar ahora'}
+              </button>
+              <p className="text-amber-600 text-xs mt-3">
+                Esta página se actualiza automáticamente cuando se confirma el pago.
+              </p>
+            </div>
+          )}
+
+          {paymentNotice && !isPaid && PAYMENT_STATUS_LABEL[paymentNotice] && (
+            <div className="bg-blue-50 text-blue-700 rounded-2xl p-4 mb-6 text-sm font-medium">
+              {PAYMENT_STATUS_LABEL[paymentNotice]}
+            </div>
+          )}
 
           <div className="bg-orange-50 rounded-2xl p-6 text-left mb-8">
             <p className="font-semibold text-gray-800 mb-4">Resumen del pedido</p>

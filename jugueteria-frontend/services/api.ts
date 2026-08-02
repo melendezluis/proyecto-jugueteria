@@ -105,4 +105,21 @@ export function getOrder(id: number) {
   return fetchApi<OrderResponse>(`/orders/${id}`);
 }
 
+// Mercado Pago
+export interface PreferenceResponse {
+  success: boolean;
+  data: {
+    init_point: string;
+    preference_id: string;
+  };
+}
+
+export function createPreference(orderId: number) {
+  return fetchApi<PreferenceResponse>(`/orders/${orderId}/checkout`, { method: 'POST' });
+}
+
+export function getPaymentStatus(orderId: number) {
+  return fetchApi<OrderResponse>(`/orders/${orderId}/payment-status`);
+}
+
 

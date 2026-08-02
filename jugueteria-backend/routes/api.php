@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ProductController;
 use Illuminate\Support\Facades\Route;
 
@@ -29,6 +30,9 @@ Route::get('/categories/{id}', [CategoryController::class, 'show']);
 Route::get('/brands', [BrandController::class, 'index']);
 Route::get('/brands/{id}', [BrandController::class, 'show']);
 
+// Webhook de Mercado Pago (público)
+Route::post('/payment/webhook', [PaymentController::class, 'webhook']);
+
 // Rutas protegidas (requieren token Sanctum)
 Route::middleware('auth:sanctum')->group(function () {
     // Perfil
@@ -39,6 +43,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{id}', [OrderController::class, 'show']);
     Route::post('/orders', [OrderController::class, 'store']);
+
+    // Pago con Mercado Pago
+    Route::post('/orders/{id}/checkout', [PaymentController::class, 'checkout']);
+    Route::get('/orders/{id}/payment-status', [PaymentController::class, 'status']);
 
     // Productos (solo con permisos)
     Route::middleware('can:product-create')->group(function () {
