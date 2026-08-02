@@ -122,6 +122,10 @@ export interface Order {
   total: number;
   status: OrderStatus;
   status_label: string;
+  preference_id: string | null;
+  payment_id: string | null;
+  payment_method: string | null;
+  paid_at: string | null;
   shipping_fullname: string;
   shipping_phone: string | null;
   shipping_address: string;
