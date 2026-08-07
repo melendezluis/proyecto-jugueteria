@@ -24,19 +24,31 @@ function getCartKey(productId: number, variantId?: number): string {
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>(() => {
+  // 👇 Inicializar con array vacío en lugar de leer localStorage
+  const [items, setItems] = useState<CartItem[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false); // 👈 Control de montaje
+
+  // 👇 Cargar datos de localStorage solo en el cliente
+  useEffect(() => {
+    setIsMounted(true);
     try {
       const saved = localStorage.getItem('cart');
-      return saved ? (JSON.parse(saved) as CartItem[]) : [];
-    } catch {
-      return [];
+      if (saved) {
+        const parsedItems = JSON.parse(saved) as CartItem[];
+        setItems(parsedItems);
+      }
+    } catch (error) {
+      console.error('Error loading cart from localStorage:', error);
     }
-  });
-  const [isOpen, setIsOpen] = useState(false);
+  }, []);
 
+  // 👇 Guardar en localStorage cuando cambie el carrito (solo en cliente)
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(items));
-  }, [items]);
+    if (isMounted) {
+      localStorage.setItem('cart', JSON.stringify(items));
+    }
+  }, [items, isMounted]);
 
   const addItem = useCallback((product: Product, quantity = 1, variant?: ProductVariant) => {
     setItems(prev => {
@@ -78,6 +90,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = useCallback(() => setItems([]), []);
 
+  // 👇 Calcular totales solo con items disponibles
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = items.reduce(
     (sum, item) => sum + (item.product.offer_price ?? item.product.price) * item.quantity,
