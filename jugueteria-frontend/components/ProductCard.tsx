@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
+import { getImageUrl } from '@/services/api';
 import type { Product } from '@/types';
 
 interface ProductCardProps {
@@ -11,6 +12,9 @@ interface ProductCardProps {
 export default function ProductCard({ product }: ProductCardProps) {
   const { addItem } = useCart();
   const hasOffer = product.offer_price !== null && product.offer_price < product.price;
+  const mainImage = product.images.find(img => img.is_main)?.image_path
+    ?? product.images[0]?.image_path
+    ?? null;
 
   return (
     <div className="bg-[#E7EBFE] rounded-3xl shadow hover:shadow-xl transition-all duration-300 overflow-hidden group flex flex-col">
@@ -59,7 +63,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             onClick={() => addItem(product)}
             className="w-full bg-[#287FF0] hover:bg-[#FF9F1C] text-white font-semibold py-4 rounded-2xl transition-all active:scale-95"
           >
-            Agregar al carrito
+            {product.stock > 0 ? 'Agregar al carrito' : 'Agotado'}
           </button>
         </div>
       </div>

@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { getProductBySlug } from '@/services/api';
+import { getProductBySlug, getImageUrl } from '@/services/api';
 import { useCart } from '@/contexts/CartContext';
-import type { Product } from '@/types';
+import type { Product, ProductVariant } from '@/types';
 
 export default function ProductDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -19,15 +19,22 @@ export default function ProductDetail() {
   const { addItem } = useCart();
 
   useEffect(() => {
+    let ignore = false;
     getProductBySlug(slug)
       .then(res => {
+        if (ignore) return;
+        const active = res.data.variants.filter(v => v.is_active);
         setProduct(res.data);
+        setSelectedImage(0);
+        setSelectedVariant(active.length === 1 ? active[0] : null);
         setLoading(false);
       })
       .catch(() => {
+        if (ignore) return;
         setError('Producto no encontrado');
         setLoading(false);
       });
+    return () => { ignore = true; };
   }, [slug]);
 
   useEffect(() => {
@@ -87,6 +94,15 @@ export default function ProductDetail() {
   const hasOffer = product.offer_price !== null && product.offer_price < product.price;
   const mainImage = images?.[selectedImage];
 
+  const activeVariants = product.variants.filter(v => v.is_active);
+  const requiresVariant = activeVariants.length > 0;
+  const basePrice = product.offer_price ?? product.price;
+  const priceExtra = selectedVariant?.price_extra ?? 0;
+  const displayedPrice = basePrice + priceExtra;
+  const comparedPrice = product.price + priceExtra;
+  const effectiveStock = selectedVariant ? selectedVariant.stock : product.stock;
+  const canAdd = effectiveStock > 0 && (!requiresVariant || !!selectedVariant);
+
   return (
     <div className="min-h-full bg-gray-50">
       <div className="max-w-7xl mx-auto px-6 py-8">
@@ -103,7 +119,7 @@ export default function ProductDetail() {
             <div className="bg-white rounded-3xl overflow-hidden shadow-sm mb-4">
               {mainImage ? (
                 <img
-                  src={mainImage.image_path}
+                  src={getImageUrl(mainImage.image_path) ?? undefined}
                   alt={mainImage.alt_text || product.name}
                   className="w-full h-96 object-cover"
                 />
@@ -179,7 +195,9 @@ export default function ProductDetail() {
 
             {product.variants.length > 0 && (
               <div className="mb-8">
-                <h3 className="font-semibold text-lg text-gray-800 mb-3">Variantes</h3>
+                <h3 className="font-semibold text-lg text-gray-800 mb-3">
+                  Variantes <span className="text-gray-400 font-normal">(selecciona una)</span>
+                </h3>
                 <div className="space-y-2">
                   {product.variants.filter(v => v.is_active).map(variant => (
                     <div key={variant.id} className="flex items-center gap-4 bg-white rounded-xl p-3 shadow-sm">

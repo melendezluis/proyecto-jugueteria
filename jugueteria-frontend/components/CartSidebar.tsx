@@ -1,6 +1,7 @@
 'use client';
 
 import { useCart } from '@/contexts/CartContext';
+import { getImageUrl } from '@/services/api';
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 
@@ -61,7 +62,10 @@ export default function CartSidebar() {
             </div>
           ) : (
             items.map(item => {
-              const itemPrice = item.product.offer_price ?? item.product.price;
+              const itemPrice = (item.product.offer_price ?? item.product.price) + (item.variant?.price_extra ?? 0);
+              const itemImage = item.product.images.find(img => img.is_main)?.image_path
+                ?? item.product.images[0]?.image_path
+                ?? null;
               return (
                 <div key={`${item.product.id}-${item.variant?.id ?? ''}`} className="flex gap-4 bg-gray-50 rounded-2xl p-4">
                   <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-black-300 rounded-xl flex items-center justify-center text-3xl flex-shrink-0">

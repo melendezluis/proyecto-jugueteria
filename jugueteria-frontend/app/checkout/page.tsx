@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
-import { createOrder } from '@/services/api';
+import { createOrder, createPreference } from '@/services/api';
+import { getImageUrl } from '@/services/api';
 
 const SHIPPING_COST = 10;
 
@@ -59,7 +60,13 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
       });
 
       clearCart();
-      router.push(`/order-confirmation/${res.data.id}`);
+
+      try {
+        const preference = await createPreference(res.data.id);
+        window.location.href = preference.data.init_point;
+      } catch {
+        router.push(`/order-confirmation/${res.data.id}`);
+      }
     } catch (err) {
       const error = err as ApiError;
       if (error.errors) {
@@ -177,8 +184,19 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
             const totalItemPrice = (itemPrice + (item.variant?.price_extra ?? 0)) * item.quantity;
             return (
               <div key={`${item.product.id}-${item.variant?.id ?? ''}`} className="flex gap-3">
-                <div className="w-14 h-14 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
-                  🧸
+                <div className="w-14 h-14 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden">
+                  {(() => {
+                    const img = item.product.images.find(i => i.is_main)?.image_path
+                      ?? item.product.images[0]?.image_path
+                      ?? null;
+                    return img ? (
+                      <img
+                        src={getImageUrl(img) ?? undefined}
+                        alt={item.product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : <span>🧸</span>;
+                  })()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-gray-800 text-sm truncate">{item.product.name}</p>
