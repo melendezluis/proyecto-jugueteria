@@ -17,25 +17,17 @@ export default function ProductCard({ product }: ProductCardProps) {
     ?? null;
 
   return (
-    <div className="bg-white rounded-3xl shadow hover:shadow-xl transition-all duration-300 overflow-hidden group flex flex-col">
+    <div className="bg-[#E7EBFE] rounded-3xl shadow hover:shadow-xl transition-all duration-300 overflow-hidden group flex flex-col">
       <Link href={`/products/${product.slug}`} className="block">
-        <div className="h-64 bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center text-8xl group-hover:scale-110 transition-transform relative">
-          {mainImage ? (
-            <img
-              src={getImageUrl(mainImage) ?? undefined}
-              alt={product.name}
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-            />
-          ) : (
-            <span>🧸</span>
-          )}
+        <div className="h-64 bg-gradient-to-br from-blue-400 to-black-900 flex items-center justify-center text-8xl group-hover:scale-110 transition-transform relative">
+          <span>🧸</span>
           {hasOffer && (
             <span className="absolute top-3 left-3 bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-full">
               Oferta
             </span>
           )}
           {product.is_featured && !hasOffer && (
-            <span className="absolute top-3 left-3 bg-orange-500 text-white text-sm font-bold px-3 py-1 rounded-full">
+            <span className="absolute top-3 left-3 bg-[#EF5350] text-white text-sm font-bold px-3 py-1 rounded-full">
               Destacado
             </span>
           )}
@@ -43,7 +35,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       </Link>
       <div className="p-6 flex flex-col flex-1">
         <Link href={`/products/${product.slug}`}>
-          <h3 className="font-semibold text-xl text-gray-800 mb-2 line-clamp-2 h-14 hover:text-orange-600 transition-colors">
+          <h3 className="font-semibold text-xl text-gray-800 mb-2 line-clamp-2 h-14 hover:text-blue-900 transition-colors">
             {product.name}
           </h3>
         </Link>
@@ -62,19 +54,14 @@ export default function ProductCard({ product }: ProductCardProps) {
                 </p>
               </>
             ) : (
-              <p className="text-3xl font-bold text-orange-600">
+              <p className="text-3xl font-bold text-black-900">
                 S/ {product.price.toFixed(2)}
               </p>
             )}
           </div>
           <button
             onClick={() => addItem(product)}
-            disabled={product.stock <= 0}
-            className={`w-full font-semibold py-4 rounded-2xl transition-all active:scale-95 ${
-              product.stock > 0
-                ? 'bg-orange-600 hover:bg-orange-700 text-white'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            }`}
+            className="w-full bg-[#287FF0] hover:bg-[#FF9F1C] text-white font-semibold py-4 rounded-2xl transition-all active:scale-95"
           >
             {product.stock > 0 ? 'Agregar al carrito' : 'Agotado'}
           </button>

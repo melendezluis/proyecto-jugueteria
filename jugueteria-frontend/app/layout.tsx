@@ -5,7 +5,7 @@ import {
   Playfair_Display, 
   Great_Vibes, 
   Inter,
-  Nunito // 👈 Agregar Nunito
+  Nunito 
 } from "next/font/google";
 import Providers from "@/components/Providers";
 import "./globals.css";
@@ -41,7 +41,7 @@ const inter = Inter({
 
 // 👇 Agregar Nunito
 const nunito = Nunito({
-  variable: "--font-nunito", // 👈 Importante: la variable CSS
+  variable: "--font-nunito", 
   subsets: ["latin"],
   weight: ["400", "600", "700", "800", "900"],
   display: "swap",

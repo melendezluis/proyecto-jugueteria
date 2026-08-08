@@ -3,6 +3,7 @@
 import { useState, FormEvent } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import Image from 'next/image';
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -38,12 +39,23 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-full flex items-center justify-center py-12 px-4">
+    <div className="min-h-full flex items-center justify-center py-12 px-4 bg-blue-100">
       <div className="w-full max-w-md">
-        <div className="text-center mb-10">
-          <span className="text-6xl block mb-4">🐱</span>
-          <h1 className="text-3xl font-bold text-orange-600">El Gato</h1>
-          <p className="text-gray-500 mt-2">Crea tu cuenta</p>
+        <div className="max-w-7xl mx-auto px-34 py-5 flex justify-between items-center">
+          <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-blue-900 bg-white flex-shrink-0">
+                        <Image
+                          src="/images/gato20.png"
+                          alt="Logo jugueteria el gato"
+                          fill
+                          className="object-contain"
+                          priority
+                        />
+                      </div>
+          <div>
+            <h1 className="text-3xl font-bold text-blue-600">El Gato</h1>
+            <p className="text-sm text-gray-500 -mt-1">Crea tu cuenta</p>
+          </div>
+          
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-sm p-8 space-y-6">
@@ -63,7 +75,7 @@ export default function RegisterPage() {
               value={name}
               onChange={e => setName(e.target.value)}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-800 placeholder:text-gray-400"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-gray-800 placeholder:text-gray-400"
               placeholder="Tu nombre"
             />
           </div>
@@ -78,7 +90,7 @@ export default function RegisterPage() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-800 placeholder:text-gray-400"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-gray-800 placeholder:text-gray-400"
               placeholder="tu@correo.com"
             />
           </div>
@@ -94,7 +106,7 @@ export default function RegisterPage() {
               onChange={e => setPassword(e.target.value)}
               required
               minLength={8}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-800 placeholder:text-gray-400"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-gray-800 placeholder:text-gray-400"
               placeholder="Mínimo 8 caracteres"
             />
           </div>
@@ -109,7 +121,7 @@ export default function RegisterPage() {
               value={passwordConfirmation}
               onChange={e => setPasswordConfirmation(e.target.value)}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-800 placeholder:text-gray-400"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-gray-800 placeholder:text-gray-400"
               placeholder="Repite la contraseña"
             />
           </div>
@@ -117,14 +129,14 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-orange-400 text-white font-semibold py-4 rounded-2xl transition-all text-lg"
+            className="w-full bg-blue-400 hover:bg-blue-500 disabled:bg-orange-400 text-white font-semibold py-4 rounded-2xl transition-all text-lg"
           >
             {loading ? 'Creando cuenta...' : 'Crear cuenta'}
           </button>
 
           <p className="text-center text-gray-500 text-sm">
             ¿Ya tienes cuenta?{' '}
-            <Link href="/login" className="text-orange-600 hover:text-orange-700 font-medium">
+            <Link href="/login" className="text-blue-400 hover:text-blue-900 font-medium">
               Inicia sesión
             </Link>
           </p>

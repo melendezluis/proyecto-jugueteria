@@ -92,7 +92,7 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
         )}
 
         <section className="bg-white rounded-3xl p-8 shadow-sm">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Datos de envío</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Datos para el envío de su compra</h2>
           <div className="space-y-5">
             <div>
               <label htmlFor="fullname" className="block text-sm font-medium text-gray-600 mb-1">
@@ -104,7 +104,7 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
                 value={fullname}
                 onChange={e => setFullname(e.target.value)}
                 required
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-800"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-gray-800"
               />
               {fieldErrors.shipping_fullname && (
                 <p className="text-sm text-red-600 mt-1">{fieldErrors.shipping_fullname}</p>
@@ -121,7 +121,7 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
                 placeholder="Opcional"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-800"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-gray-800"
               />
             </div>
 
@@ -135,7 +135,7 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
                 value={address}
                 onChange={e => setAddress(e.target.value)}
                 required
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-800"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-gray-800"
               />
               {fieldErrors.shipping_address && (
                 <p className="text-sm text-red-600 mt-1">{fieldErrors.shipping_address}</p>
@@ -152,7 +152,7 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
                 value={city}
                 onChange={e => setCity(e.target.value)}
                 required
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-800"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-gray-800"
               />
               {fieldErrors.shipping_city && (
                 <p className="text-sm text-red-600 mt-1">{fieldErrors.shipping_city}</p>
@@ -169,7 +169,7 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
                 onChange={e => setNotes(e.target.value)}
                 rows={3}
                 placeholder="Opcional"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-800"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-gray-800"
               />
             </div>
           </div>
@@ -177,7 +177,7 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
       </div>
 
       <aside className="bg-white rounded-3xl p-8 shadow-sm h-fit lg:sticky lg:top-24">
-        <h2 className="text-xl font-bold text-gray-800 mb-6">Resumen del pedido</h2>
+        <h2 className="text-xl font-bold text-gray-800 mb-6">Tus pedidos</h2>
         <div className="space-y-4 mb-6 max-h-96 overflow-y-auto pr-1">
           {items.map(item => {
             const itemPrice = item.product.offer_price ?? item.product.price;
@@ -225,21 +225,21 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
           </div>
           <div className="flex justify-between text-lg font-bold text-gray-800 pt-2">
             <span>Total</span>
-            <span className="text-orange-600">S/ {total.toFixed(2)}</span>
+            <span className="text-blue-600">S/ {total.toFixed(2)}</span>
           </div>
         </div>
 
         <button
           type="submit"
           disabled={submitting}
-          className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-orange-400 text-white font-semibold py-4 rounded-2xl transition-all text-lg mt-6"
+          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-orange-400 text-white font-semibold py-4 rounded-2xl transition-all text-lg mt-6"
         >
           {submitting ? 'Procesando pedido...' : 'Confirmar pedido'}
         </button>
 
         <Link
           href="/"
-          className="block text-center text-gray-500 hover:text-orange-600 text-sm mt-4 transition-colors"
+          className="block text-center text-gray-500 hover:text-blue-600 text-sm mt-4 transition-colors"
         >
           Seguir comprando
         </Link>
@@ -275,12 +275,12 @@ export default function CheckoutPage() {
     <div className="bg-gray-50 min-h-full">
       <div className="max-w-7xl mx-auto px-6 py-10">
         <nav className="mb-6 text-sm text-gray-500">
-          <Link href="/" className="hover:text-orange-600">Inicio</Link>
+          <Link href="/" className="hover:text-blue-600">Inicio</Link>
           <span className="mx-2">/</span>
           <span className="text-gray-800">Checkout</span>
         </nav>
 
-        <h1 className="text-4xl font-bold text-gray-800 mb-8">Finalizar compra</h1>
+        <h1 className="text-4xl font-bold text-gray-800 mb-8">Datos para su compra</h1>
 
         {items.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl">
@@ -288,7 +288,7 @@ export default function CheckoutPage() {
             <p className="text-2xl text-gray-600 mb-4">Tu carrito está vacío</p>
             <Link
               href="/"
-              className="inline-block bg-orange-600 hover:bg-orange-700 text-white font-semibold px-8 py-3 rounded-full transition-all"
+              className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3 rounded-full transition-all"
             >
               Ver juguetes
             </Link>
