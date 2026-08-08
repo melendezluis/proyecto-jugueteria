@@ -40,8 +40,8 @@ export default function CartSidebar() {
         className="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl flex flex-col"
       >
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-2xl font-bold text-gray-800">
-            Carrito ({items.length} {items.length === 1 ? 'producto' : 'productos'})
+          <h2 className="text-2x1 font-bold text-gray-800">
+            Tu Carrito ({items.length} {items.length === 1 ? 'producto' : 'productos'})
           </h2>
           <button
             onClick={closeCart}
@@ -68,16 +68,8 @@ export default function CartSidebar() {
                 ?? null;
               return (
                 <div key={`${item.product.id}-${item.variant?.id ?? ''}`} className="flex gap-4 bg-gray-50 rounded-2xl p-4">
-                  <div className="w-20 h-20 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center text-3xl flex-shrink-0 overflow-hidden">
-                    {itemImage ? (
-                      <img
-                        src={getImageUrl(itemImage) ?? undefined}
-                        alt={item.product.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span>🧸</span>
-                    )}
+                  <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-black-300 rounded-xl flex items-center justify-center text-3xl flex-shrink-0">
+                    🧸
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-800 truncate">{item.product.name}</h3>
@@ -87,7 +79,7 @@ export default function CartSidebar() {
                     {item.variant?.size && (
                       <p className="text-sm text-gray-500">Talla: {item.variant.size}</p>
                     )}
-                    <p className="text-orange-600 font-bold mt-1">
+                    <p className="text-blue-600 font-bold mt-1">
                       S/ {(itemPrice * item.quantity).toFixed(2)}
                     </p>
                     <div className="flex items-center gap-3 mt-2">
@@ -110,9 +102,9 @@ export default function CartSidebar() {
                       </div>
                       <button
                         onClick={() => removeItem(item.product.id, item.variant?.id)}
-                        className="text-red-500 hover:text-red-700 text-sm font-medium ml-auto"
+                        className="text-red-600 hover:text-red-400 text-4xl font-medium ml-8"
                       >
-                        Eliminar
+                        🗑
                       </button>
                     </div>
                   </div>
@@ -126,12 +118,12 @@ export default function CartSidebar() {
           <div className="border-t p-6 space-y-4">
             <div className="flex justify-between text-lg">
               <span className="font-semibold text-gray-800">Total</span>
-              <span className="font-bold text-orange-600 text-2xl">S/ {totalPrice.toFixed(2)}</span>
+              <span className="font-bold text-blue-500 text-2xl">S/ {totalPrice.toFixed(2)}</span>
             </div>
             <Link
               href="/checkout"
               onClick={closeCart}
-              className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-4 rounded-2xl transition-all text-lg text-center block"
+              className="w-full bg-[#287FF0] hover:bg-[#FF9F1C] text-white font-semibold py-4 rounded-2xl transition-all text-lg text-center block"
             >
               Ir a pagar
             </Link>
