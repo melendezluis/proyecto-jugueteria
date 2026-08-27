@@ -39,10 +39,10 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-full flex items-center justify-center py-12 px-4 bg-blue-100">
+    <div className="min-h-full flex items-center justify-center py-12 px-4 bg-[#F8F9FA]">
       <div className="w-full max-w-md">
         <div className="max-w-7xl mx-auto px-34 py-5 flex justify-between items-center">
-          <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-blue-900 bg-white flex-shrink-0">
+          <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-[#000000] bg-white flex-shrink-0">
                         <Image
                           src="/images/gato20.png"
                           alt="Logo jugueteria el gato"
@@ -52,13 +52,13 @@ export default function RegisterPage() {
                         />
                       </div>
           <div>
-            <h1 className="text-3xl font-bold text-blue-600">El Gato</h1>
-            <p className="text-sm text-gray-500 -mt-1">Crea tu cuenta</p>
+            <h1 className="font-kaushan text-3xl text-[#2B2D42]">El Gato</h1>
+            <p className="text-sm text-[#2B2D42]/70 mt-1">Crea tu cuenta</p>
           </div>
-          
+
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-sm p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-sm p-8 space-y-6 border-t-4 border-[#6EBA92]">
           {error && (
             <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm font-medium">
               {error}
@@ -66,7 +66,7 @@ export default function RegisterPage() {
           )}
 
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="name" className="block text-sm font-medium text-[#2B2D42] mb-2">
               Nombre completo
             </label>
             <input
@@ -75,13 +75,13 @@ export default function RegisterPage() {
               value={name}
               onChange={e => setName(e.target.value)}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-gray-800 placeholder:text-gray-400"
+              className="w-full px-4 py-3 border border-gray-300 bg-[#F8F9FA] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6EBA92]/40 focus:border-[#6EBA92] text-[#2B2D42] placeholder:text-gray-400"
               placeholder="Tu nombre"
             />
           </div>
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="email" className="block text-sm font-medium text-[#2B2D42] mb-2">
               Correo electrónico
             </label>
             <input
@@ -90,13 +90,16 @@ export default function RegisterPage() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-gray-800 placeholder:text-gray-400"
+              className="w-full px-4 py-3 border border-gray-300 bg-[#F8F9FA] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6EBA92]/40 focus:border-[#6EBA92] text-[#2B2D42] placeholder:text-gray-400"
               placeholder="tu@correo.com"
             />
+            <p className="mt-1.5 text-xs font-medium text-[#219EBC]">
+              Usaremos este correo para enviarte la confirmación de tu pedido
+            </p>
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="password" className="block text-sm font-medium text-[#2B2D42] mb-2">
               Contraseña
             </label>
             <input
@@ -106,13 +109,16 @@ export default function RegisterPage() {
               onChange={e => setPassword(e.target.value)}
               required
               minLength={8}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-gray-800 placeholder:text-gray-400"
+              className="w-full px-4 py-3 border border-gray-300 bg-[#F8F9FA] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6EBA92]/40 focus:border-[#6EBA92] text-[#2B2D42] placeholder:text-gray-400"
               placeholder="Mínimo 8 caracteres"
             />
+            <p className={`mt-1.5 text-xs font-medium ${password.length >= 8 ? 'text-[#06D6A0]' : 'text-[#219EBC]'}`}>
+              {password.length >= 8 ? '✓ Contraseña válida' : 'La contraseña debe tener al menos 8 caracteres'}
+            </p>
           </div>
 
           <div>
-            <label htmlFor="passwordConfirmation" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="passwordConfirmation" className="block text-sm font-medium text-[#2B2D42] mb-2">
               Confirmar contraseña
             </label>
             <input
@@ -121,22 +127,27 @@ export default function RegisterPage() {
               value={passwordConfirmation}
               onChange={e => setPasswordConfirmation(e.target.value)}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-gray-800 placeholder:text-gray-400"
+              className="w-full px-4 py-3 border border-gray-300 bg-[#F8F9FA] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6EBA92]/40 focus:border-[#6EBA92] text-[#2B2D42] placeholder:text-gray-400"
               placeholder="Repite la contraseña"
             />
+            {passwordConfirmation.length > 0 && (
+              <p className={`mt-1.5 text-xs font-medium ${password === passwordConfirmation ? 'text-[#06D6A0]' : 'text-red-500'}`}>
+                {password === passwordConfirmation ? '✓ Las contraseñas coinciden' : 'Las contraseñas no coinciden'}
+              </p>
+            )}
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-400 hover:bg-blue-500 disabled:bg-orange-400 text-white font-semibold py-4 rounded-2xl transition-all text-lg"
+            className="w-full bg-[#219EBC] hover:bg-[#1B7F99] disabled:bg-gray-300 text-white font-semibold py-4 rounded-2xl transition-all text-lg"
           >
             {loading ? 'Creando cuenta...' : 'Crear cuenta'}
           </button>
 
-          <p className="text-center text-gray-500 text-sm">
+          <p className="text-center text-[#2B2D42]/70 text-sm">
             ¿Ya tienes cuenta?{' '}
-            <Link href="/login" className="text-blue-400 hover:text-blue-900 font-medium">
+            <Link href="/login" className="text-[#219EBC] hover:text-[#1B7F99] font-medium">
               Inicia sesión
             </Link>
           </p>

@@ -18,6 +18,8 @@ Route::get('/test', function () {
 // Autenticación (pública)
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 // Rutas públicas (solo lectura)
 Route::get('/products', [ProductController::class, 'index']);
@@ -38,6 +40,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Perfil
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/profile', [AuthController::class, 'updateProfile']);
+    Route::post('/profile/password', [AuthController::class, 'changePassword']);
 
     // Órdenes (cualquier cliente autenticado)
     Route::get('/orders', [OrderController::class, 'index']);
