@@ -19,15 +19,15 @@ export default function ProductCard({ product }: ProductCardProps) {
   return (
     <div className="bg-[#E7EBFE] rounded-3xl shadow hover:shadow-xl transition-all duration-300 overflow-hidden group flex flex-col">
       <Link href={`/products/${product.slug}`} className="block">
-        <div className="h-64 bg-gradient-to-br from-blue-400 to-black-900 flex items-center justify-center text-8xl group-hover:scale-110 transition-transform relative">
+        <div className="h-64 bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-8xl group-hover:scale-110 transition-transform relative">
           <span>🧸</span>
           {hasOffer && (
-            <span className="absolute top-3 left-3 bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-full">
+            <span className="absolute top-3 left-3 bg-pink-500 text-white text-sm font-bold px-3 py-1 rounded-full">
               Oferta
             </span>
           )}
           {product.is_featured && !hasOffer && (
-            <span className="absolute top-3 left-3 bg-[#EF5350] text-white text-sm font-bold px-3 py-1 rounded-full">
+            <span className="absolute top-3 left-3 bg-[#FFD23F] text-gray-900 text-sm font-bold px-3 py-1 rounded-full">
               Destacado
             </span>
           )}
@@ -46,7 +46,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           <div className="flex items-baseline gap-2 mb-5">
             {hasOffer ? (
               <>
-                <p className="text-3xl font-bold text-orange-600">
+                <p className="text-3xl font-bold text-pink-600">
                   S/ {product.offer_price!.toFixed(2)}
                 </p>
                 <p className="text-lg text-gray-400 line-through">
@@ -54,16 +54,19 @@ export default function ProductCard({ product }: ProductCardProps) {
                 </p>
               </>
             ) : (
-              <p className="text-3xl font-bold text-black-900">
+              <p className="text-3xl font-bold text-gray-900">
                 S/ {product.price.toFixed(2)}
               </p>
             )}
           </div>
           <button
             onClick={() => addItem(product)}
-            className="w-full bg-[#287FF0] hover:bg-[#FF9F1C] text-white font-semibold py-4 rounded-2xl transition-all active:scale-95"
+            className="w-full inline-flex items-center justify-center gap-2 bg-[#C4785C] hover:bg-[#B56A4E] text-white font-semibold py-4 rounded-2xl transition-all active:scale-95 shadow-md shadow-[#C4785C]/30 btn-shimmer"
           >
-            {product.stock > 0 ? 'Agregar al carrito' : 'Agotado'}
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
+            </svg>
+            Agregar al carrito
           </button>
         </div>
       </div>

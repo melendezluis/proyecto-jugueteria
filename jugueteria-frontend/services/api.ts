@@ -23,7 +23,10 @@ function getToken(): string | null {
 
 async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const token = getToken();
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const res = await fetch(`${API_URL}${endpoint}`, {
@@ -62,14 +65,25 @@ export function getBrands() {
 }
 
 // Auth
+export interface AuthUser {
+  id: number;
+  name: string;
+  email: string;
+  roles?: string[];
+}
+
+interface AuthResponse {
+  success: boolean;
+  message: string;
+  data: { user: AuthUser; token: string };
+}
+
 export function loginApi(email: string, password: string) {
-  return fetchApi<{ success: boolean; message: string; data: { user: { id: number; name: string; email: string }; token: string } }>(
-    '/login', { method: 'POST', body: JSON.stringify({ email, password }) }
-  );
+  return fetchApi<AuthResponse>('/login', { method: 'POST', body: JSON.stringify({ email, password }) });
 }
 
 export function registerApi(name: string, email: string, password: string, passwordConfirmation: string) {
-  return fetchApi<{ success: boolean; message: string; data: { user: { id: number; name: string; email: string }; token: string } }>(
+  return fetchApi<AuthResponse>(
     '/register', { method: 'POST', body: JSON.stringify({ name, email, password, password_confirmation: passwordConfirmation }) }
   );
 }
@@ -79,7 +93,31 @@ export function logoutApi() {
 }
 
 export function getUserApi() {
-  return fetchApi<{ success: boolean; data: { id: number; name: string; email: string } }>('/user');
+  return fetchApi<{ success: boolean; data: AuthUser }>('/user');
+}
+
+export function updateProfileApi(name: string, email: string) {
+  return fetchApi<{ success: boolean; message: string; data: AuthUser }>(
+    '/profile', { method: 'POST', body: JSON.stringify({ name, email }) }
+  );
+}
+
+export function changePasswordApi(currentPassword: string, password: string, passwordConfirmation: string) {
+  return fetchApi<{ success: boolean; message: string }>(
+    '/profile/password', { method: 'POST', body: JSON.stringify({ current_password: currentPassword, password, password_confirmation: passwordConfirmation }) }
+  );
+}
+
+export function forgotPasswordApi(email: string) {
+  return fetchApi<{ success: boolean; message: string }>(
+    '/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }
+  );
+}
+
+export function resetPasswordApi(token: string, email: string, password: string, passwordConfirmation: string) {
+  return fetchApi<{ success: boolean; message: string }>(
+    '/reset-password', { method: 'POST', body: JSON.stringify({ token, email, password, password_confirmation: passwordConfirmation }) }
+  );
 }
 
 // Orders

@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import { 
   Geist, 
   Geist_Mono, 
-  Playfair_Display, 
-  Great_Vibes, 
-  Inter,
-  Nunito 
+  Fredoka,
+  Nunito,
+  Kaushan_Script 
 } from "next/font/google";
 import Providers from "@/components/Providers";
 import "./globals.css";
@@ -20,22 +19,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const playfair = Playfair_Display({
-  variable: "--font-playfair",
+const fredoka = Fredoka({
+  variable: "--font-fredoka",
   subsets: ["latin"],
-  display: "swap",
-});
-
-const greatVibes = Great_Vibes({
-  variable: "--font-great-vibes",
-  weight: "400",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -44,6 +31,14 @@ const nunito = Nunito({
   variable: "--font-nunito", 
   subsets: ["latin"],
   weight: ["400", "600", "700", "800", "900"],
+  display: "swap",
+});
+
+// 👇 Agregar Kaushan Script (tipografía para "El Gato")
+const kaushan = Kaushan_Script({
+  variable: "--font-kaushan",
+  subsets: ["latin"],
+  weight: "400",
   display: "swap",
 });
 
@@ -60,7 +55,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} ${greatVibes.variable} ${inter.variable} ${nunito.variable} h-full antialiased`} // 👈 Agregar nunito.variable
+      className={`${geistSans.variable} ${geistMono.variable} ${fredoka.variable} ${nunito.variable} ${kaushan.variable} h-full antialiased`} // 👈 Agregar kaushan.variable
     >
       <body className="min-h-full flex flex-col bg-gray-50">
         <Providers>{children}</Providers>
