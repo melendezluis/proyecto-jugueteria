@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { Order } from '@/types';
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-amber-100 text-amber-700',
+  pending: 'bg-yellow-100 text-yellow-700',
   paid: 'bg-blue-100 text-blue-700',
   shipped: 'bg-indigo-100 text-indigo-700',
   completed: 'bg-green-100 text-green-700',
@@ -48,7 +48,7 @@ export default function OrdersPage() {
           <h1 className="text-4xl font-bold text-gray-800">Mis pedidos</h1>
           <Link
             href="/"
-            className="text-orange-600 hover:text-orange-700 font-medium transition-colors"
+            className="text-pink-600 hover:text-pink-700 font-medium transition-colors"
           >
             Seguir comprando
           </Link>
@@ -64,7 +64,7 @@ export default function OrdersPage() {
             <p className="text-2xl text-gray-600 mb-4">Aún no tienes pedidos</p>
             <Link
               href="/"
-              className="inline-block bg-orange-600 hover:bg-orange-700 text-white font-semibold px-8 py-3 rounded-full transition-all"
+              className="inline-block bg-[#287FF0] hover:bg-[#1B66D0] text-white font-semibold px-8 py-3 rounded-full transition-all"
             >
               Ver juguetes
             </Link>
@@ -87,7 +87,7 @@ export default function OrdersPage() {
                   <span className={`px-4 py-1.5 rounded-full text-sm font-semibold ${STATUS_COLORS[order.status]}`}>
                     {order.status_label}
                   </span>
-                  <p className="text-lg font-bold text-orange-600">S/ {order.total.toFixed(2)}</p>
+                  <p className="text-lg font-bold text-pink-600">S/ {order.total.toFixed(2)}</p>
                 </div>
                 <div className="border-t pt-4 space-y-2">
                   {order.items.map(item => (

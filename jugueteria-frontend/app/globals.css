@@ -10,16 +10,15 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-playfair: var(--font-playfair);
-  --font-great-vibes: var(--font-great-vibes);
-  --font-inter: var(--font-inter);
+  --font-fredoka: var(--font-fredoka);
   --font-nunito: var(--font-nunito);
+  --font-kaushan: var(--font-kaushan);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-nunito), 'Nunito', 'Inter', sans-serif;
+  font-family: var(--font-nunito), 'Nunito', sans-serif;
 }
 
 /* 👇 CONTENEDOR PRINCIPAL */
@@ -29,7 +28,7 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 2rem 4rem;
-  background-color: #ede7f3;
+  background-color: #F8F9FA;
   gap: 2rem;
 }
 
@@ -41,7 +40,7 @@ body {
   align-items: center;
   padding: 1rem;
   padding-left: 1rem;
-  margin-top: 90px;
+  margin-top: 20px;
 }
 
 /* 👇 IMAGEN - TAMAÑO CONTROLADO */
@@ -104,29 +103,70 @@ body {
 .categoria-item.active {
   color: #000000;
   font-weight: 900;
-  border-bottom: 3px solid #ff6b00;
+  border-bottom: 3px solid #287FF0;
   padding-bottom: 4px;
 }
 
 /* 👇 CLASES DE FUENTES */
-.font-playfair {
-  font-family: var(--font-playfair), 'Times New Roman', serif;
+.font-fredoka {
+  font-family: var(--font-fredoka), 'Fredoka', sans-serif;
 }
 
-.font-great-vibes {
-  font-family: var(--font-great-vibes), cursive;
+.font-kaushan {
+  font-family: var(--font-kaushan), 'Comic Sans MS', cursive;
+  /* Engrosa ligeramente el trazo para que el título resalte */
+  -webkit-text-stroke: 0.7px currentColor;
 }
 
-.font-inter {
-  font-family: var(--font-inter), Arial, sans-serif;
+/* 👇 EFECTO SHIMMER BOTONES */
+.btn-shimmer {
+  position: relative;
+  overflow: hidden;
 }
 
-.title-elegant {
-  font-family: var(--font-playfair), 'Times New Roman', serif;
-  letter-spacing: 0.05em;
+.btn-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transition: left 0.5s ease;
 }
 
-.subtitle-elegant {
-  font-family: var(--font-great-vibes), cursive;
-  font-weight: 400;
+.btn-shimmer:hover::after {
+  left: 120%;
+}
+
+/* 👇 ANIMACIONES DEL CARRITO */
+@keyframes cart-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes cart-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.cart-panel {
+  animation: cart-slide-in 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.cart-overlay {
+  animation: cart-fade-in 0.25s ease-out;
 }

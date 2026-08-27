@@ -40,7 +40,7 @@ export default function OrderConfirmationPage() {
       <div className="max-w-7xl mx-auto px-6 py-20 text-center">
         <span className="text-6xl block mb-4">😿</span>
         <h2 className="text-3xl font-bold text-gray-800 mb-4">{error || 'Pedido no encontrado'}</h2>
-        <Link href="/" className="text-orange-600 hover:text-orange-700 font-medium text-lg">
+        <Link href="/" className="text-pink-600 hover:text-pink-700 font-medium text-lg">
           Volver a la tienda
         </Link>
       </div>
@@ -54,11 +54,11 @@ export default function OrderConfirmationPage() {
           <span className="text-7xl block mb-6">🎉</span>
           <h1 className="text-4xl font-bold text-gray-800 mb-2">¡Gracias por tu compra!</h1>
           <p className="text-gray-500 mb-6">
-            Tu pedido <span className="font-semibold text-orange-600">{order.order_number}</span> ha sido
+            Tu pedido <span className="font-semibold text-pink-600">{order.order_number}</span> ha sido
             registrado con éxito.
           </p>
 
-          <div className="bg-orange-50 rounded-2xl p-6 text-left mb-8">
+          <div className="bg-pink-50 rounded-2xl p-6 text-left mb-8">
             <p className="font-semibold text-gray-800 mb-4">Resumen del pedido</p>
             <div className="space-y-3">
               {order.items.map(item => (
@@ -72,7 +72,7 @@ export default function OrderConfirmationPage() {
                 </div>
               ))}
             </div>
-            <div className="border-t border-orange-200 mt-4 pt-4 space-y-2">
+            <div className="border-t border-pink-200 mt-4 pt-4 space-y-2">
               <div className="flex justify-between text-sm text-gray-600">
                 <span>Subtotal</span>
                 <span>S/ {order.subtotal.toFixed(2)}</span>
@@ -83,7 +83,7 @@ export default function OrderConfirmationPage() {
               </div>
               <div className="flex justify-between font-bold text-gray-800">
                 <span>Total</span>
-                <span className="text-orange-600">S/ {order.total.toFixed(2)}</span>
+                <span className="text-pink-600">S/ {order.total.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -102,7 +102,7 @@ export default function OrderConfirmationPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/"
-              className="bg-orange-600 hover:bg-orange-700 text-white font-semibold px-8 py-3 rounded-full transition-all"
+              className="bg-[#287FF0] hover:bg-[#1B66D0] text-white font-semibold px-8 py-3 rounded-full transition-all"
             >
               Seguir comprando
             </Link>
