@@ -21,6 +21,7 @@ class Order extends Model
         'payment_id',
         'payment_method',
         'paid_at',
+        'cancelled_at',
         'shipping_fullname',
         'shipping_phone',
         'shipping_address',
@@ -33,13 +34,14 @@ class Order extends Model
         'shipping' => 'decimal:2',
         'total' => 'decimal:2',
         'paid_at' => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
 
     protected static function booted()
     {
         static::creating(function (Order $order) {
             if (empty($order->order_number)) {
-                $order->order_number = 'ELGATO-' . strtoupper(Str::random(8));
+                $order->order_number = 'ELGATO-'.strtoupper(Str::random(8));
             }
         });
     }

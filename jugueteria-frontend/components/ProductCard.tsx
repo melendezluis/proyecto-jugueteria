@@ -19,15 +19,22 @@ export default function ProductCard({ product }: ProductCardProps) {
   return (
     <div className="bg-[#E7EBFE] rounded-3xl shadow hover:shadow-xl transition-all duration-300 overflow-hidden group flex flex-col">
       <Link href={`/products/${product.slug}`} className="block">
-        <div className="h-64 bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-8xl group-hover:scale-110 transition-transform relative">
-          <span>🧸</span>
+        <div className="h-64 bg-gradient-to-br from-sky-400 to-blue-600 relative overflow-hidden">
+          <span className="absolute inset-0 flex items-center justify-center text-8xl select-none">🧸</span>
+          {mainImage && (
+            <img
+              src={getImageUrl(mainImage) ?? undefined}
+              alt={product.name}
+              className="relative w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+            />
+          )}
           {hasOffer && (
-            <span className="absolute top-3 left-3 bg-pink-500 text-white text-sm font-bold px-3 py-1 rounded-full">
+            <span className="absolute top-3 left-3 z-10 bg-pink-500 text-white text-sm font-bold px-3 py-1 rounded-full">
               Oferta
             </span>
           )}
           {product.is_featured && !hasOffer && (
-            <span className="absolute top-3 left-3 bg-[#FFD23F] text-gray-900 text-sm font-bold px-3 py-1 rounded-full">
+            <span className="absolute top-3 left-3 z-10 bg-[#FFD23F] text-gray-900 text-sm font-bold px-3 py-1 rounded-full">
               Destacado
             </span>
           )}

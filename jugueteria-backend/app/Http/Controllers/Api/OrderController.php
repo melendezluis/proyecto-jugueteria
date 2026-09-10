@@ -26,7 +26,7 @@ class OrderController
         foreach ($validated['items'] as $item) {
             $product = Product::find($item['product_id']);
 
-            if (!$product || !$product->is_active) {
+            if (! $product || ! $product->is_active) {
                 throw ValidationException::withMessages([
                     'items' => ["El producto con ID {$item['product_id']} no está disponible."],
                 ]);
@@ -35,12 +35,12 @@ class OrderController
             $unitPrice = $product->offer_price ?? $product->price;
             $variant = null;
 
-            if (!empty($item['variant_id'])) {
+            if (! empty($item['variant_id'])) {
                 $variant = ProductVariant::where('id', $item['variant_id'])
                     ->where('product_id', $product->id)
                     ->first();
 
-                if (!$variant || !$variant->is_active) {
+                if (! $variant || ! $variant->is_active) {
                     throw ValidationException::withMessages([
                         'items' => ["La variante del producto {$product->name} no está disponible."],
                     ]);
@@ -72,7 +72,7 @@ class OrderController
 
         $total = round($subtotal + $shipping, 2);
 
-        $order = DB::transaction(function () use ($request, $user, $subtotal, $shipping, $total, $lines, $validated) {
+        $order = DB::transaction(function () use ($user, $subtotal, $shipping, $total, $lines, $validated) {
             $order = Order::create([
                 'user_id' => $user->id,
                 'subtotal' => $subtotal,
@@ -106,6 +106,8 @@ class OrderController
                 }
             }
 
+            $user->cart()?->delete();
+
             return $order;
         });
 
@@ -131,7 +133,7 @@ class OrderController
                 'last_page' => $orders->lastPage(),
                 'per_page' => (int) $orders->perPage(),
                 'total' => $orders->total(),
-            ]
+            ],
         ]);
     }
 
@@ -144,6 +146,28 @@ class OrderController
         return response()->json([
             'success' => true,
             'data' => new OrderResource($order),
+        ]);
+    }
+
+    public function cancel(Request $request, $id)
+    {
+        $order = Order::with('items')
+            ->where('user_id', $request->user()->id)
+            ->findOrFail($id);
+
+        if ($order->status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Solo puedes cancelar pedidos que aún estén pendientes de pago.',
+            ], 422);
+        }
+
+        $order->update(['status' => 'cancelled']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pedido cancelado correctamente.',
+            'data' => new OrderResource($order->fresh('items')),
         ]);
     }
 }

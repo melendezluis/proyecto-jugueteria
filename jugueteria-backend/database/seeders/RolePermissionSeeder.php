@@ -23,22 +23,22 @@ class RolePermissionSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            Permission::create(['name' => $permission]);
+            Permission::findOrCreate($permission);
         }
 
-        // Crear roles y asignar permisos
-        $admin = Role::create(['name' => 'admin']);
-        $admin->givePermissionTo($permissions);
+        // Crear roles y asignar permisos (idempotente)
+        $admin = Role::findOrCreate('admin');
+        $admin->syncPermissions($permissions);
 
-        $editor = Role::create(['name' => 'editor']);
-        $editor->givePermissionTo([
+        $editor = Role::findOrCreate('editor');
+        $editor->syncPermissions([
             'product-list', 'product-create', 'product-edit',
             'category-list', 'category-create', 'category-edit',
             'brand-list', 'brand-create', 'brand-edit',
         ]);
 
-        $client = Role::create(['name' => 'client']);
-        $client->givePermissionTo([
+        $client = Role::findOrCreate('client');
+        $client->syncPermissions([
             'product-list',
             'category-list',
             'brand-list',

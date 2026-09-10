@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getOrders } from '@/services/api';
+import { getOrders, cancelOrderApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Order } from '@/types';
 
@@ -20,6 +20,8 @@ export default function OrdersPage() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
+  const [cancelError, setCancelError] = useState('');
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -32,6 +34,21 @@ export default function OrdersPage() {
         .finally(() => setLoading(false));
     }
   }, [authLoading, isAuthenticated, router]);
+
+  async function handleCancel(orderId: number) {
+    if (!window.confirm('¿Seguro que deseas cancelar este pedido?')) return;
+    setCancellingId(orderId);
+    setCancelError('');
+    try {
+      await cancelOrderApi(orderId);
+      const res = await getOrders();
+      setOrders(res.data);
+    } catch (err) {
+      setCancelError((err as Error).message || 'No se pudo cancelar el pedido');
+    } finally {
+      setCancellingId(null);
+    }
+  }
 
   if (authLoading) {
     return (
@@ -53,6 +70,12 @@ export default function OrdersPage() {
             Seguir comprando
           </Link>
         </div>
+
+        {cancelError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl text-sm font-medium mb-6">
+            {cancelError}
+          </div>
+        )}
 
         {loading ? (
           <div className="text-center py-20">
@@ -88,6 +111,15 @@ export default function OrdersPage() {
                     {order.status_label}
                   </span>
                   <p className="text-lg font-bold text-pink-600">S/ {order.total.toFixed(2)}</p>
+                  {order.status === 'pending' && (
+                    <button
+                      onClick={() => handleCancel(order.id)}
+                      disabled={cancellingId === order.id}
+                      className="text-sm text-red-600 hover:text-red-700 font-medium disabled:opacity-50 transition-colors"
+                    >
+                      {cancellingId === order.id ? 'Cancelando...' : 'Cancelar pedido'}
+                    </button>
+                  )}
                 </div>
                 <div className="border-t pt-4 space-y-2">
                   {order.items.map(item => (

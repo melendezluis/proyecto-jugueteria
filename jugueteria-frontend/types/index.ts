@@ -98,6 +98,7 @@ export interface CartItem {
   product: Product;
   quantity: number;
   variant?: ProductVariant;
+  serverItemId?: number;
 }
 
 export interface OrderItem {

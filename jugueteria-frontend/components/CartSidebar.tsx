@@ -126,13 +126,21 @@ export default function CartSidebar() {
             items.map(item => {
               const itemPrice = item.product.offer_price ?? item.product.price;
               const hasOffer = item.product.offer_price !== null && item.product.offer_price < item.product.price;
+              const thumb = item.product.images[0]?.image_path ?? null;
               return (
                 <div
                   key={`${item.product.id}-${item.variant?.id ?? ''}`}
                   className="flex gap-4 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm"
                 >
-                  <div className="relative w-20 h-20 bg-gradient-to-br from-sky-100 to-blue-200 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
-                    🧸
+                  <div className="relative w-20 h-20 bg-gradient-to-br from-sky-100 to-blue-200 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0 overflow-hidden">
+                    <span className="select-none">🧸</span>
+                    {thumb && (
+                      <img
+                        src={getImageUrl(thumb) ?? undefined}
+                        alt={item.product.name}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    )}
                     <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1 bg-[#FFD23F] text-gray-900 text-[11px] font-extrabold rounded-full flex items-center justify-center border-2 border-white">
                       {item.quantity}
                     </span>

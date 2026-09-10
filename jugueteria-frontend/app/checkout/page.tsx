@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { createOrder, createPreference } from '@/services/api';
-import { getImageUrl } from '@/services/api';
 
 const SHIPPING_COST = 10;
 
@@ -191,6 +190,10 @@ function Stepper({ current }: { current: number }) {
 
 /* ---------- Formulario ---------- */
 
+function ErrorText({ message }: { message?: string }) {
+  return message ? <p className="text-sm text-red-600 mt-1.5">{message}</p> : null;
+}
+
 function CheckoutForm({ user }: { user: CheckoutUser }) {
   const router = useRouter();
   const { items, clearCart, totalPrice } = useCart();
@@ -261,9 +264,6 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
     }`;
 
   const inputWithIconClass = (hasError?: boolean) => `${inputClass(hasError)} pl-11`;
-
-  const ErrorText = ({ message }: { message?: string }) =>
-    message ? <p className="text-sm text-red-600 mt-1.5">{message}</p> : null;
 
   return (
     <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">

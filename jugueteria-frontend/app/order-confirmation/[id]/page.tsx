@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { getOrder, getPaymentStatus, createPreference } from '@/services/api';
+import { getOrder, getPaymentStatus, createPreference, cancelOrderApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Order } from '@/types';
 
@@ -12,9 +12,19 @@ interface ApiError extends Error {
 }
 
 const PAYMENT_STATUS_LABEL: Record<string, string> = {
+  approved: 'Tu pago fue procesado correctamente.',
   success: 'Tu pago fue procesado correctamente.',
   pending: 'Tu pago está en proceso. Te avisaremos apenas se confirme.',
   failure: 'El pago no se completó. Puedes intentarlo nuevamente.',
+  rejected: 'El pago no se completó. Puedes intentarlo nuevamente.',
+};
+
+const STATUS_TONE: Record<string, string> = {
+  approved: 'bg-green-50 border-green-200 text-green-700',
+  success: 'bg-green-50 border-green-200 text-green-700',
+  pending: 'bg-amber-50 border-amber-200 text-amber-700',
+  failure: 'bg-red-50 border-red-200 text-red-700',
+  rejected: 'bg-red-50 border-red-200 text-red-700',
 };
 
 export default function OrderConfirmationPage() {
@@ -27,6 +37,8 @@ export default function OrderConfirmationPage() {
   const [error, setError] = useState('');
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState('');
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState('');
 
   const paymentNotice = searchParams.get('status');
 
@@ -73,6 +85,21 @@ export default function OrderConfirmationPage() {
     }
   }
 
+  async function handleCancel() {
+    if (!window.confirm('¿Seguro que deseas cancelar este pedido?')) return;
+    setCancelling(true);
+    setCancelError('');
+    try {
+      const res = await cancelOrderApi(Number(id));
+      setOrder(res.data);
+    } catch (err) {
+      const error = err as ApiError;
+      setCancelError(error.message || 'No se pudo cancelar el pedido');
+    } finally {
+      setCancelling(false);
+    }
+  }
+
   if (loading || authLoading) {
     return (
       <div className="max-w-7xl mx-auto px-6 py-20 text-center">
@@ -94,18 +121,23 @@ export default function OrderConfirmationPage() {
   }
 
   const isPaid = order.status === 'paid';
+  const isCancelled = order.status === 'cancelled';
 
   return (
     <div className="bg-gray-50 min-h-full">
       <div className="max-w-3xl mx-auto px-6 py-12 text-center">
         <div className="bg-white rounded-3xl shadow-sm p-10">
-          <span className="text-7xl block mb-6">{isPaid ? '🎉' : '🧸'}</span>
+          <span className="text-7xl block mb-6">{isPaid ? '🎉' : isCancelled ? '😿' : '🧸'}</span>
           <h1 className="text-4xl font-bold text-gray-800 mb-2">
-            {isPaid ? '¡Pago confirmado!' : '¡Gracias por tu compra!'}
+            {isPaid ? '¡Pago confirmado!' : isCancelled ? 'Pedido cancelado' : '¡Gracias por tu compra!'}
           </h1>
           <p className="text-gray-500 mb-6">
-            Tu pedido <span className="font-semibold text-pink-600">{order.order_number}</span> ha sido
-            registrado con éxito.
+            {isCancelled
+              ? 'Tu pedido fue cancelado y el stock quedó liberado. Si pagaste por error, contacta con nosotros.'
+              : (
+                <>Tu pedido <span className="font-semibold text-pink-600">{order.order_number}</span> ha sido
+                registrado con éxito.</>
+              )}
           </p>
 
           <div className="bg-pink-50 rounded-2xl p-6 text-left mb-8">
@@ -148,6 +180,42 @@ export default function OrderConfirmationPage() {
               <p className="text-gray-600 text-sm">Tel: {order.shipping_phone}</p>
             )}
           </div>
+
+          {!isPaid && !isCancelled && (
+            <div className="mb-8">
+              {paymentNotice && PAYMENT_STATUS_LABEL[paymentNotice] && (
+                <div
+                  className={`${STATUS_TONE[paymentNotice] ?? 'bg-gray-50 border-gray-200 text-gray-700'} border px-4 py-3 rounded-2xl text-sm font-medium mb-4`}
+                >
+                  {PAYMENT_STATUS_LABEL[paymentNotice]}
+                </div>
+              )}
+              {payError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl text-sm mb-4">
+                  {payError}
+                </div>
+              )}
+              <button
+                onClick={handlePay}
+                disabled={paying}
+                className="w-full inline-flex items-center justify-center gap-2 bg-[#287FF0] hover:bg-[#1B66D0] disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-2xl transition-all active:scale-[0.98]"
+              >
+                {paying ? 'Redirigiendo a Mercado Pago...' : 'Pagar ahora'}
+              </button>
+              {cancelError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl text-sm mt-4">
+                  {cancelError}
+                </div>
+              )}
+              <button
+                onClick={handleCancel}
+                disabled={cancelling}
+                className="w-full mt-3 text-sm text-red-600 hover:text-red-700 font-medium disabled:opacity-50 transition-colors"
+              >
+                {cancelling ? 'Cancelando pedido...' : 'Cancelar pedido'}
+              </button>
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
