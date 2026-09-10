@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BrandController;
+use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PaymentController;
@@ -9,11 +10,6 @@ use App\Http\Controllers\Api\ProductController;
 use Illuminate\Support\Facades\Route;
 
 // ====================== API PARA LA JUGUETERÍA ======================
-
-// Rutas de prueba
-Route::get('/test', function () {
-    return ['mensaje' => 'API funcionando correctamente'];
-});
 
 // Autenticación (pública)
 Route::post('/register', [AuthController::class, 'register']);
@@ -43,10 +39,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile', [AuthController::class, 'updateProfile']);
     Route::post('/profile/password', [AuthController::class, 'changePassword']);
 
+    // Carrito (persistente por usuario)
+    Route::get('/cart', [CartController::class, 'show']);
+    Route::post('/cart/sync', [CartController::class, 'sync']);
+    Route::post('/cart/items', [CartController::class, 'addItem']);
+    Route::put('/cart/items/{id}', [CartController::class, 'updateItem']);
+    Route::delete('/cart/items/{id}', [CartController::class, 'removeItem']);
+    Route::delete('/cart', [CartController::class, 'destroy']);
+
     // Órdenes (cualquier cliente autenticado)
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{id}', [OrderController::class, 'show']);
     Route::post('/orders', [OrderController::class, 'store']);
+    Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel']);
 
     // Pago con Mercado Pago
     Route::post('/orders/{id}/checkout', [PaymentController::class, 'checkout']);

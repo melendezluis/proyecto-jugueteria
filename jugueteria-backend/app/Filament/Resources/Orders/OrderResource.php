@@ -72,6 +72,26 @@ class OrderResource extends Resource
                     ]),
                 Grid::make(2)
                     ->schema([
+                        TextInput::make('preference_id')
+                            ->label('Preferencia de pago')
+                            ->disabled(),
+                        TextInput::make('payment_id')
+                            ->label('ID de pago (Mercado Pago)')
+                            ->disabled(),
+                        TextInput::make('payment_method')
+                            ->label('Método de pago')
+                            ->disabled(),
+                        TextInput::make('paid_at')
+                            ->label('Pagado el')
+                            ->disabled()
+                            ->dateTime('d/m/Y H:i'),
+                        TextInput::make('cancelled_at')
+                            ->label('Cancelada el')
+                            ->disabled()
+                            ->dateTime('d/m/Y H:i'),
+                    ]),
+                Grid::make(2)
+                    ->schema([
                         TextInput::make('shipping_fullname')
                             ->label('Destinatario')
                             ->disabled(),

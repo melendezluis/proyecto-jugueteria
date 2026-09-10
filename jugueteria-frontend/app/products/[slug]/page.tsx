@@ -19,12 +19,14 @@ export default function ProductDetail() {
   const [lastSlug, setLastSlug] = useState(slug);
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomOrigin, setZoomOrigin] = useState('50% 50%');
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
 
   // Reinicia la cantidad y el zoom al navegar a otro producto
   if (lastSlug !== slug) {
     setLastSlug(slug);
     setQuantity(1);
     setSelectedImage(0);
+    setSelectedVariant(null);
     setIsZoomed(false);
     setZoomOrigin('50% 50%');
   }
@@ -149,7 +151,7 @@ export default function ProductDetail() {
                 {mainImage && (
                   <img
                     key={mainImage.id}
-                    src={mainImage.image_path}
+                    src={getImageUrl(mainImage.image_path) ?? undefined}
                     alt={mainImage.alt_text || product.name}
                     style={{ transformOrigin: zoomOrigin }}
                     className={`absolute inset-0 w-full h-full object-cover transition-transform duration-300 ease-out ${
@@ -197,7 +199,7 @@ export default function ProductDetail() {
                   >
                     <span className="opacity-50">🧸</span>
                     <img
-                      src={img.image_path}
+                      src={getImageUrl(img.image_path) ?? undefined}
                       alt={img.alt_text || ''}
                       className="absolute inset-0 w-full h-full object-cover"
                       onError={e => { e.currentTarget.style.display = 'none'; }}
@@ -221,27 +223,27 @@ export default function ProductDetail() {
             <div className="flex items-baseline gap-3 mb-6">
               {hasOffer ? (
                 <>
-                  <p className="text-4xl font-bold text-pink-600">S/ {product.offer_price!.toFixed(2)}</p>
-                  <p className="text-2xl text-gray-400 line-through">S/ {product.price.toFixed(2)}</p>
+                  <p className="text-4xl font-bold text-pink-600">S/ {displayedPrice.toFixed(2)}</p>
+                  <p className="text-2xl text-gray-400 line-through">S/ {comparedPrice.toFixed(2)}</p>
                 </>
               ) : (
-                <p className="text-4xl font-bold text-gray-900">S/ {product.price.toFixed(2)}</p>
+                <p className="text-4xl font-bold text-gray-900">S/ {displayedPrice.toFixed(2)}</p>
               )}
             </div>
 
             <div className="flex items-center gap-2 mb-6">
-              {product.stock > 0 ? (
+              {effectiveStock > 0 ? (
                 <>
                   <span
                     className={`h-2.5 w-2.5 rounded-full animate-pulse flex-shrink-0 ${
-                      product.stock <= 5 ? 'bg-amber-400' : 'bg-green-500'
+                      effectiveStock <= 5 ? 'bg-amber-400' : 'bg-green-500'
                     }`}
                   />
                   <p className="text-sm text-gray-600">
-                    {product.stock <= 5 && (
+                    {effectiveStock <= 5 && (
                       <span className="font-bold text-amber-600">¡Quedan pocas unidades! </span>
                     )}
-                    {product.stock} {product.stock === 1 ? 'unidad disponible' : 'unidades disponibles'}
+                    {effectiveStock} {effectiveStock === 1 ? 'unidad disponible' : 'unidades disponibles'}
                   </p>
                 </>
               ) : (
@@ -269,26 +271,49 @@ export default function ProductDetail() {
                   Variantes <span className="text-gray-400 font-normal">(selecciona una)</span>
                 </h3>
                 <div className="space-y-2">
-                  {product.variants.filter(v => v.is_active).map(variant => (
-                    <div key={variant.id} className="flex items-center gap-4 bg-white rounded-xl p-3 shadow-sm">
-                      {variant.color && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600">Color:</span>
-                          <span className="font-medium">{variant.color}</span>
-                        </div>
-                      )}
-                      {variant.size && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600">Talla:</span>
-                          <span className="font-medium">{variant.size}</span>
-                        </div>
-                      )}
-                      {variant.price_extra > 0 && (
-                        <span className="text-sm text-blue-600">+S/ {variant.price_extra.toFixed(2)}</span>
-                      )}
-                      <span className="text-sm text-gray-500 ml-auto">Stock: {variant.stock}</span>
-                    </div>
-                  ))}
+                  {product.variants.filter(v => v.is_active).map(variant => {
+                    const isSelected = selectedVariant?.id === variant.id;
+                    return (
+                      <button
+                        key={variant.id}
+                        type="button"
+                        onClick={() => setSelectedVariant(isSelected ? null : variant)}
+                        disabled={variant.stock <= 0}
+                        aria-pressed={isSelected}
+                        className={`w-full flex items-center gap-4 bg-white rounded-xl p-3 shadow-sm text-left transition-all border-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                          isSelected
+                            ? 'border-[#219EBC] ring-2 ring-[#219EBC]/20'
+                            : 'border-transparent hover:border-gray-200 cursor-pointer'
+                        }`}
+                      >
+                        <span
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                            isSelected ? 'border-[#219EBC] bg-[#219EBC]' : 'border-gray-300'
+                          }`}
+                        >
+                          {isSelected && <span className="w-2 h-2 rounded-full bg-white" />}
+                        </span>
+                        {variant.color && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-600">Color:</span>
+                            <span className="font-medium">{variant.color}</span>
+                          </div>
+                        )}
+                        {variant.size && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-600">Talla:</span>
+                            <span className="font-medium">{variant.size}</span>
+                          </div>
+                        )}
+                        {variant.price_extra > 0 && (
+                          <span className="text-sm text-blue-600">+S/ {variant.price_extra.toFixed(2)}</span>
+                        )}
+                        <span className="text-sm text-gray-500 ml-auto">
+                          Stock: {variant.stock}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -333,7 +358,7 @@ export default function ProductDetail() {
             </div>
 
             {/* Selector de cantidad */}
-            {product.stock > 0 && (
+            {effectiveStock > 0 && (
               <div className="flex items-center gap-4 mb-6">
                 <span className="text-sm font-medium text-gray-700">Cantidad:</span>
                 <div className="inline-flex items-center border-2 border-gray-200 rounded-full overflow-hidden bg-white">
@@ -350,32 +375,36 @@ export default function ProductDetail() {
                   <button
                     type="button"
                     aria-label="Aumentar cantidad"
-                    onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}
-                    disabled={quantity >= product.stock}
+                    onClick={() => setQuantity(q => Math.min(effectiveStock, q + 1))}
+                    disabled={quantity >= effectiveStock}
                     className="px-4 py-2.5 text-xl leading-none text-gray-600 hover:bg-[#E7F3FF] hover:text-[#219EBC] disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
                   >
                     +
                   </button>
                 </div>
                 <span className="text-xs text-gray-400">
-                  Máximo {product.stock} {product.stock === 1 ? 'unidad' : 'unidades'}
+                  Máximo {effectiveStock} {effectiveStock === 1 ? 'unidad' : 'unidades'}
                 </span>
               </div>
             )}
 
             <button
-              onClick={() => addItem(product, quantity)}
-              disabled={product.stock <= 0}
+              onClick={() => addItem(product, quantity, selectedVariant ?? undefined)}
+              disabled={!canAdd}
               className="w-full inline-flex items-center justify-center gap-2 bg-[#C4785C] hover:bg-[#B56A4E] disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-5 rounded-2xl transition-all text-xl active:scale-95 shadow-md shadow-[#C4785C]/30 btn-shimmer"
             >
-              {product.stock > 0 ? (
+              {effectiveStock <= 0 ? (
+                'Producto agotado'
+              ) : requiresVariant && !selectedVariant ? (
+                'Selecciona una variante'
+              ) : (
                 <>
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
                   </svg>
                   Agregar al carrito ({quantity})
                 </>
-              ) : 'Producto agotado'}
+              )}
             </button>
           </div>
         </div>

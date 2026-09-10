@@ -4,16 +4,17 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
+use App\Services\MercadoPagoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use MercadoPago\Client\Payment\PaymentClient;
-use MercadoPago\Client\Preference\PreferenceClient;
 use MercadoPago\Exceptions\MPApiException;
 use MercadoPago\MercadoPagoConfig;
 use MercadoPago\Webhook\WebhookSignatureValidator;
 
 class PaymentController
 {
+    public function __construct(private MercadoPagoService $mercadoPago) {}
+
     private function guardHasAccessToken(): bool
     {
         return (bool) config('mercadopago.access_token');
@@ -40,7 +41,7 @@ class PaymentController
             ], 422);
         }
 
-        if (!$this->guardHasAccessToken()) {
+        if (! $this->guardHasAccessToken()) {
             return response()->json([
                 'success' => false,
                 'message' => 'El pago en línea no está configurado. Contacta al administrador.',
@@ -71,7 +72,7 @@ class PaymentController
             $frontendUrl = rtrim(config('mercadopago.frontend_url'), '/');
             $notificationUrl = config('mercadopago.webhook_url');
 
-            $request = [
+            $preferenceRequest = [
                 'items' => $items,
                 'external_reference' => $order->order_number,
                 'notification_url' => $notificationUrl,
@@ -84,10 +85,10 @@ class PaymentController
             ];
 
             if (str_starts_with($frontendUrl, 'https://')) {
-                $request['auto_return'] = 'approved';
+                $preferenceRequest['auto_return'] = 'approved';
             }
 
-            $preference = (new PreferenceClient())->create($request);
+            $preference = $this->mercadoPago->createPreference($preferenceRequest);
 
             $order->update(['preference_id' => $preference->id]);
 
@@ -139,9 +140,9 @@ class PaymentController
         if ($order->preference_id && $this->guardHasAccessToken()) {
             try {
                 $this->bootMercadoPago();
-                $payment = (new PaymentClient())->search($this->paymentSearchRequest($order->order_number));
+                $payment = $this->mercadoPago->searchPayments($order->order_number);
 
-                if (!empty($payment->results)) {
+                if (! empty($payment->results)) {
                     $this->syncOrderWithPayment($order, $payment->results[0]);
                 }
             } catch (\Exception $e) {
@@ -187,11 +188,11 @@ class PaymentController
             ?? $request->query('data.id')
             ?? $request->input('id');
 
-        if (!$paymentId) {
+        if (! $paymentId) {
             return response()->json(['success' => false], 422);
         }
 
-        if (!$this->guardHasAccessToken()) {
+        if (! $this->guardHasAccessToken()) {
             Log::warning('Mercado Pago: webhook recibido sin access token configurado.');
 
             return response()->json(['success' => false], 503);
@@ -199,7 +200,7 @@ class PaymentController
 
         try {
             $this->bootMercadoPago();
-            $payment = (new PaymentClient())->get((int) $paymentId);
+            $payment = $this->mercadoPago->getPayment((int) $paymentId);
 
             if ($payment->external_reference) {
                 $order = Order::where('order_number', $payment->external_reference)->first();
@@ -220,15 +221,6 @@ class PaymentController
         }
     }
 
-    private function paymentSearchRequest(string $externalReference): \MercadoPago\Net\MPSearchRequest
-    {
-        return new \MercadoPago\Net\MPSearchRequest(1, 0, [
-            'external_reference' => $externalReference,
-            'sort' => 'date_created',
-            'criteria' => 'desc',
-        ]);
-    }
-
     private function syncOrderWithPayment(Order $order, $payment): void
     {
         $status = $payment->status;
@@ -242,14 +234,24 @@ class PaymentController
             ]);
         }
 
-        if ($status === 'pending' && !$order->payment_id) {
+        if ($status === 'pending' && ! $order->payment_id) {
             $order->update([
                 'payment_id' => (string) $payment->id,
                 'payment_method' => $payment->payment_method_id,
             ]);
         }
 
-        if (in_array($status, ['cancelled', 'rejected'], true) && $order->status === 'pending') {
+        // Pago abandonado por el cliente: se cancela la orden y se libera el stock
+        if ($status === 'cancelled' && $order->status === 'pending') {
+            $order->update([
+                'status' => 'cancelled',
+                'payment_id' => (string) $payment->id,
+                'payment_method' => $payment->payment_method_id,
+            ]);
+        }
+
+        // Pago rechazado: se conserva la orden pendiente para permitir un reintento
+        if ($status === 'rejected' && $order->status === 'pending' && ! $order->payment_id) {
             $order->update([
                 'payment_id' => (string) $payment->id,
                 'payment_method' => $payment->payment_method_id,

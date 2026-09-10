@@ -1,7 +1,26 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
 import type { CartItem, Product, ProductVariant } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  addCartItemApi,
+  clearCartApi,
+  getCartApi,
+  removeCartItemApi,
+  syncCartApi,
+  updateCartItemApi,
+  type ServerCartItem,
+} from '@/services/api';
 
 interface CartContextType {
   items: CartItem[];
@@ -23,32 +42,103 @@ function getCartKey(productId: number, variantId?: number): string {
   return variantId ? `${productId}-${variantId}` : `${productId}`;
 }
 
-export function CartProvider({ children }: { children: ReactNode }) {
-  // 👇 Inicializar con array vacío en lugar de leer localStorage
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [isMounted, setIsMounted] = useState(false); // 👈 Control de montaje
+function toPayload(item: CartItem) {
+  return {
+    product_id: item.product.id,
+    quantity: item.quantity,
+    variant_id: item.variant?.id,
+  };
+}
 
-  // 👇 Cargar datos de localStorage solo en el cliente
-  useEffect(() => {
-    setIsMounted(true);
+function mapItems(serverItems: ServerCartItem[]): CartItem[] {
+  return serverItems.map(item => ({
+    product: item.product,
+    quantity: item.quantity,
+    variant: item.variant ?? undefined,
+    serverItemId: item.id,
+  }));
+}
+
+/* ---------- Almacén externo: localStorage como fuente única del carrito ---------- */
+
+const CART_STORAGE_KEY = 'cart';
+const CART_EVENT = 'elgato-cart-updated';
+
+let cachedCart: CartItem[] = [];
+let cachedRaw: string | null = null;
+
+function getCartSnapshot(): CartItem[] {
+  if (typeof window === 'undefined') return cachedCart;
+  const raw = localStorage.getItem(CART_STORAGE_KEY) ?? '';
+  if (raw !== cachedRaw) {
+    cachedRaw = raw;
     try {
-      const saved = localStorage.getItem('cart');
-      if (saved) {
-        const parsedItems = JSON.parse(saved) as CartItem[];
-        setItems(parsedItems);
-      }
-    } catch (error) {
-      console.error('Error loading cart from localStorage:', error);
+      cachedCart = raw ? (JSON.parse(raw) as CartItem[]) : [];
+    } catch {
+      cachedCart = [];
     }
-  }, []);
+  }
+  return cachedCart;
+}
 
-  // 👇 Guardar en localStorage cuando cambie el carrito (solo en cliente)
+function subscribeToCart(callback: () => void) {
+  window.addEventListener(CART_EVENT, callback);
+  return () => window.removeEventListener(CART_EVENT, callback);
+}
+
+const getServerSnapshot = () => cachedCart;
+
+function writeCart(next: CartItem[]) {
+  cachedRaw = JSON.stringify(next);
+  cachedCart = next;
+  localStorage.setItem(CART_STORAGE_KEY, cachedRaw);
+  window.dispatchEvent(new Event(CART_EVENT));
+}
+
+function clearStoredCart() {
+  cachedRaw = null;
+  cachedCart = [];
+  try {
+    localStorage.removeItem(CART_STORAGE_KEY);
+  } catch { /* ignore */ }
+  window.dispatchEvent(new Event(CART_EVENT));
+}
+
+/* ---------- Proveedor ---------- */
+
+export function CartProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated } = useAuth();
+  const items = useSyncExternalStore(subscribeToCart, getCartSnapshot, getServerSnapshot);
+  const [isOpen, setIsOpen] = useState(false);
+
+  const authRef = useRef(isAuthenticated);
+  const hydratedRef = useRef(false);
+
+  // Sincronizar con el servidor cuando cambia la autenticación
   useEffect(() => {
-    if (isMounted) {
-      localStorage.setItem('cart', JSON.stringify(items));
+    const prevAuth = authRef.current;
+    authRef.current = isAuthenticated;
+
+    if (!isAuthenticated) {
+      hydratedRef.current = false;
+      if (prevAuth) {
+        clearStoredCart();
+      }
+      return;
     }
-  }, [items, isMounted]);
+
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+
+    const localItems = getCartSnapshot();
+    const request = localItems.length > 0
+      ? syncCartApi(localItems.map(toPayload))
+      : getCartApi();
+
+    request
+      .then(res => writeCart(mapItems(res.data.items)))
+      .catch(() => { /* conservar el carrito local si falla la sincronización */ });
+  }, [isAuthenticated]);
 
   const addItem = useCallback((product: Product, quantity = 1, variant?: ProductVariant) => {
     const availableStock = variant ? variant.stock : product.stock;
@@ -57,29 +147,52 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setIsOpen(true);
       return;
     }
+    setIsOpen(true);
 
-    setItems(prev => {
+    const applyLocal = () => {
+      const current = getCartSnapshot();
       const key = getCartKey(product.id, variant?.id);
-      const existing = prev.find(
+      const existing = current.find(
         item => getCartKey(item.product.id, item.variant?.id) === key
       );
+      let next: CartItem[];
       if (existing) {
-        const newQuantity = Math.min(existing.quantity + quantity, availableStock);
-        return prev.map(item =>
+        next = current.map(item =>
           getCartKey(item.product.id, item.variant?.id) === key
-            ? { ...item, quantity: newQuantity }
+            ? { ...item, quantity: Math.min(existing.quantity + quantity, availableStock) }
             : item
         );
+      } else {
+        next = [...current, { product, quantity: Math.min(quantity, availableStock), variant }];
       }
-      return [...prev, { product, quantity: Math.min(quantity, availableStock), variant }];
-    });
-    setIsOpen(true);
+      writeCart(next);
+    };
+
+    if (authRef.current) {
+      addCartItemApi(product.id, quantity, variant?.id)
+        .then(res => writeCart(mapItems(res.data.items)))
+        .catch(applyLocal);
+    } else {
+      applyLocal();
+    }
   }, []);
 
   const removeItem = useCallback((productId: number, variantId?: number) => {
-    setItems(prev =>
-      prev.filter(item => getCartKey(item.product.id, item.variant?.id) !== getCartKey(productId, variantId))
+    const key = getCartKey(productId, variantId);
+    const current = getCartSnapshot();
+    const target = current.find(
+      item => getCartKey(item.product.id, item.variant?.id) === key
     );
+
+    writeCart(current.filter(
+      item => getCartKey(item.product.id, item.variant?.id) !== key
+    ));
+
+    if (authRef.current && target?.serverItemId) {
+      removeCartItemApi(target.serverItemId)
+        .then(res => writeCart(mapItems(res.data.items)))
+        .catch(() => {});
+    }
   }, []);
 
   const updateQuantity = useCallback((productId: number, quantity: number, variantId?: number) => {
@@ -87,18 +200,34 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeItem(productId, variantId);
       return;
     }
-    setItems(prev =>
-      prev.map(item =>
-        getCartKey(item.product.id, item.variant?.id) === getCartKey(productId, variantId)
-          ? { ...item, quantity }
-          : item
-      )
+
+    const key = getCartKey(productId, variantId);
+    const current = getCartSnapshot();
+    const target = current.find(
+      item => getCartKey(item.product.id, item.variant?.id) === key
     );
+
+    writeCart(current.map(item =>
+      getCartKey(item.product.id, item.variant?.id) === key
+        ? { ...item, quantity }
+        : item
+    ));
+
+    if (authRef.current && target?.serverItemId) {
+      updateCartItemApi(target.serverItemId, quantity)
+        .then(res => writeCart(mapItems(res.data.items)))
+        .catch(() => {});
+    }
   }, [removeItem]);
 
-  const clearCart = useCallback(() => setItems([]), []);
+  const clearCart = useCallback(() => {
+    clearStoredCart();
+    if (authRef.current) {
+      clearCartApi().catch(() => {});
+    }
+  }, []);
 
-  // 👇 Calcular totales solo con items disponibles
+  // Calcular totales solo con items disponibles
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = items.reduce(
     (sum, item) =>

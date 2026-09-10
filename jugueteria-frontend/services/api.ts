@@ -5,6 +5,8 @@ import type {
   BrandsResponse,
   OrderResponse,
   OrdersResponse,
+  Product,
+  ProductVariant,
 } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
@@ -143,6 +145,10 @@ export function getOrder(id: number) {
   return fetchApi<OrderResponse>(`/orders/${id}`);
 }
 
+export function cancelOrderApi(id: number) {
+  return fetchApi<OrderResponse>(`/orders/${id}/cancel`, { method: 'POST' });
+}
+
 // Mercado Pago
 export interface PreferenceResponse {
   success: boolean;
@@ -158,6 +164,63 @@ export function createPreference(orderId: number) {
 
 export function getPaymentStatus(orderId: number) {
   return fetchApi<OrderResponse>(`/orders/${orderId}/payment-status`);
+}
+
+// Carrito persistente (requiere sesión)
+export interface ServerCartItem {
+  id: number;
+  product: Product;
+  variant: ProductVariant | null;
+  quantity: number;
+}
+
+export interface CartData {
+  id: number;
+  items: ServerCartItem[];
+}
+
+export interface CartResponse {
+  success: boolean;
+  data: CartData;
+}
+
+export interface CartItemPayload {
+  product_id: number;
+  quantity: number;
+  variant_id?: number;
+}
+
+export function getCartApi() {
+  return fetchApi<CartResponse>('/cart');
+}
+
+export function addCartItemApi(productId: number, quantity: number, variantId?: number) {
+  return fetchApi<CartResponse>('/cart/items', {
+    method: 'POST',
+    body: JSON.stringify({ product_id: productId, quantity, variant_id: variantId }),
+  });
+}
+
+export function updateCartItemApi(id: number, quantity: number) {
+  return fetchApi<CartResponse>(`/cart/items/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ quantity }),
+  });
+}
+
+export function removeCartItemApi(id: number) {
+  return fetchApi<CartResponse>(`/cart/items/${id}`, { method: 'DELETE' });
+}
+
+export function clearCartApi() {
+  return fetchApi<CartResponse>('/cart', { method: 'DELETE' });
+}
+
+export function syncCartApi(items: CartItemPayload[]) {
+  return fetchApi<CartResponse>('/cart/sync', {
+    method: 'POST',
+    body: JSON.stringify({ items }),
+  });
 }
 
 
