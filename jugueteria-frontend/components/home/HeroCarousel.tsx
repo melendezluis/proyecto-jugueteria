@@ -26,16 +26,16 @@ const SLIDES: Slide[] = [
     title: 'Hasta 50% de descuento',
     subtitle: 'Aprovecha las mejores ofertas de la semana antes que se agoten',
     ctaLabel: 'Ver ofertas',
-    ctaHref: '#ofertas',
+    ctaHref: '/descuentos',
     bg: 'bg-gradient-to-br from-pink-400 via-fuchsia-500 to-purple-600',
   },
   {
-    emoji: '🚀',
-    title: 'Envío express a toda Lima',
-    subtitle: 'Recibe tu pedido en menos de 24 horas',
-    ctaLabel: 'Comprar ahora',
-    ctaHref: '#productos',
-    bg: 'bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-600',
+    emoji: '🎁',
+    title: 'Juguetes recién llegados',
+    subtitle: 'Descubre los juguetes más nuevos que acaban de llegar a la tienda',
+    ctaLabel: 'Recién llegados',
+    ctaHref: '/recien-llegados',
+    bg: 'bg-gradient-to-br from-amber-400 via-orange-500 to-red-500',
   },
 ];
 
@@ -82,7 +82,7 @@ export default function HeroCarousel() {
               </p>
               <Link
                 href={slide.ctaHref}
-                className="inline-block bg-white text-gray-900 font-bold px-8 py-3 rounded-full shadow-lg hover:bg-yellow-300 hover:scale-105 active:scale-95 transition-all"
+                className="inline-block bg-yellow-400 text-gray-900 font-bold px-8 py-3 rounded-full shadow-lg hover:bg-yellow-300 hover:scale-105 active:bg-yellow-300! active:scale-95 transition-all"
               >
                 {slide.ctaLabel}
               </Link>
@@ -94,14 +94,14 @@ export default function HeroCarousel() {
       <button
         onClick={() => goTo(index - 1)}
         aria-label="Anterior"
-        className="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/30 backdrop-blur-sm text-white text-xl font-bold flex items-center justify-center hover:bg-white/60 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+        className="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/30 backdrop-blur-sm text-white text-xl font-bold flex items-center justify-center hover:bg-white/60 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100"
       >
         ‹
       </button>
       <button
         onClick={() => goTo(index + 1)}
         aria-label="Siguiente"
-        className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/30 backdrop-blur-sm text-white text-xl font-bold flex items-center justify-center hover:bg-white/60 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+        className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/30 backdrop-blur-sm text-white text-xl font-bold flex items-center justify-center hover:bg-white/60 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100"
       >
         ›
       </button>

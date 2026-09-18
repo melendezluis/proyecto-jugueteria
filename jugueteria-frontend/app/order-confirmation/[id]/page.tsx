@@ -5,10 +5,19 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { getOrder, getPaymentStatus, createPreference, cancelOrderApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCart } from '@/contexts/CartContext';
 import type { Order } from '@/types';
 
 interface ApiError extends Error {
   status?: number;
+}
+
+function ArrowLeftIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+    </svg>
+  );
 }
 
 const PAYMENT_STATUS_LABEL: Record<string, string> = {
@@ -32,6 +41,7 @@ export default function OrderConfirmationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, loading: authLoading } = useAuth();
+  const { clearCart } = useCart();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -41,6 +51,8 @@ export default function OrderConfirmationPage() {
   const [cancelError, setCancelError] = useState('');
 
   const paymentNotice = searchParams.get('status');
+  const orderId = Number(id);
+  const validId = Number.isInteger(orderId) && orderId > 0;
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -50,7 +62,8 @@ export default function OrderConfirmationPage() {
 
   useEffect(() => {
     if (authLoading || !isAuthenticated) return;
-    getOrder(Number(id))
+    if (!validId) return;
+    getOrder(orderId)
       .then(res => {
         setOrder(res.data);
         setLoading(false);
@@ -59,23 +72,29 @@ export default function OrderConfirmationPage() {
         setError('No se pudo cargar tu pedido');
         setLoading(false);
       });
-  }, [id, isAuthenticated, authLoading]);
+  }, [orderId, validId, isAuthenticated, authLoading]);
 
   useEffect(() => {
     if (!order || order.status !== 'pending') return;
     const timer = setInterval(() => {
-      getPaymentStatus(Number(id))
+      getPaymentStatus(orderId)
         .then(res => setOrder(res.data))
         .catch(() => {});
     }, 5000);
     return () => clearInterval(timer);
-  }, [order, id]);
+  }, [order, orderId]);
+
+  useEffect(() => {
+    if (order?.status === 'paid') {
+      clearCart();
+    }
+  }, [order?.status, clearCart]);
 
   async function handlePay() {
     setPaying(true);
     setPayError('');
     try {
-      const preference = await createPreference(Number(id));
+      const preference = await createPreference(orderId);
       window.location.href = preference.data.init_point;
     } catch (err) {
       const error = err as ApiError;
@@ -90,7 +109,7 @@ export default function OrderConfirmationPage() {
     setCancelling(true);
     setCancelError('');
     try {
-      const res = await cancelOrderApi(Number(id));
+      const res = await cancelOrderApi(orderId);
       setOrder(res.data);
     } catch (err) {
       const error = err as ApiError;
@@ -98,6 +117,18 @@ export default function OrderConfirmationPage() {
     } finally {
       setCancelling(false);
     }
+  }
+
+  if (!validId) {
+    return (
+      <div className="max-w-7xl mx-auto px-6 py-20 text-center">
+        <span className="text-6xl block mb-4">😿</span>
+        <h2 className="text-3xl font-bold text-gray-800 mb-4">Pedido no encontrado</h2>
+        <Link href="/" className="text-pink-600 hover:text-pink-700 font-medium text-lg">
+          Volver a la tienda
+        </Link>
+      </div>
+    );
   }
 
   if (loading || authLoading) {
@@ -140,7 +171,7 @@ export default function OrderConfirmationPage() {
               )}
           </p>
 
-          <div className="bg-pink-50 rounded-2xl p-6 text-left mb-8">
+          <div className="bg-[#B0FFDC4D] rounded-2xl p-6 text-left mb-8">
             <p className="font-semibold text-gray-800 mb-4">Resumen del pedido</p>
             <div className="space-y-3">
               {order.items.map(item => (
@@ -220,13 +251,14 @@ export default function OrderConfirmationPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/"
-              className="bg-[#287FF0] hover:bg-[#1B66D0] text-white font-semibold px-8 py-3 rounded-full transition-all"
+              className="inline-flex items-center justify-center gap-2 bg-[#72B992] hover:bg-[#5EA57E] active:bg-[#4A8A67] text-white font-semibold px-8 py-3 rounded-full shadow-lg shadow-[#72B992]/30 transition-all hover:-translate-y-0.5 active:scale-[0.98]"
             >
+              <ArrowLeftIcon className="w-5 h-5" />
               Seguir comprando
             </Link>
             <Link
               href="/orders"
-              className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-8 py-3 rounded-full transition-all"
+              className="bg-[#7CBF9C] hover:bg-[#8BCFA9] active:bg-[#5EA57E] text-gray-700 font-semibold px-8 py-3 rounded-full transition-all active:scale-[0.98]"
             >
               Ver mis pedidos
             </Link>

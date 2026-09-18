@@ -36,6 +36,7 @@ export default function LoginPage() {
             src="/images/jugueteria_banner_no_borders.png"
             alt="Juguetería El Gato"
             fill
+            sizes="50vw"
             className="object-contain"
             priority
           />
@@ -47,11 +48,12 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           <div className="flex flex-col items-center mb-10">
   <div className="flex items-center gap-4">
-    <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-[#000000] bg-white flex-shrink-0">
+    <div className="relative w-14 h-14 rounded-full overflow-hidden bg-white flex-shrink-0">
       <Image
         src="/images/gato20.png"
         alt="Logo jugueteria el gato"
         fill
+        sizes="56px"
         className="object-contain rounded-full"
         priority
       />

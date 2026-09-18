@@ -11,11 +11,11 @@ use Illuminate\Support\Facades\Route;
 
 // ====================== API PARA LA JUGUETERÍA ======================
 
-// Autenticación (pública)
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+// Autenticación (pública — con protección contra fuerza bruta)
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:10,1');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:5,1');
 
 // Rutas públicas (solo lectura)
 Route::get('/products', [ProductController::class, 'index']);
