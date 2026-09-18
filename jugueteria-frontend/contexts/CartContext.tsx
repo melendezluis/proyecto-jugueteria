@@ -63,6 +63,7 @@ function mapItems(serverItems: ServerCartItem[]): CartItem[] {
 
 const CART_STORAGE_KEY = 'cart';
 const CART_EVENT = 'elgato-cart-updated';
+const AUTH_LOGOUT_EVENT = 'elgato-auth-logout';
 
 let cachedCart: CartItem[] = [];
 let cachedRaw: string | null = null;
@@ -104,6 +105,26 @@ function clearStoredCart() {
   window.dispatchEvent(new Event(CART_EVENT));
 }
 
+// Combina el estado local (optimista) con la respuesta del servidor sin perder
+// operaciones más recientes que aún están en vuelo. Adopta el serverItemId y
+// la cantidad del servidor solo si es mayor que la local.
+function mergeServerItems(serverItems: ServerCartItem[]): CartItem[] {
+  const current = getCartSnapshot();
+  const serverByKey = new Map(
+    serverItems.map(si => [getCartKey(si.product.id, si.variant?.id), si])
+  );
+  return current.map(item => {
+    const key = getCartKey(item.product.id, item.variant?.id);
+    const server = serverByKey.get(key);
+    if (!server) return item;
+    return {
+      ...item,
+      quantity: server.quantity > item.quantity ? server.quantity : item.quantity,
+      serverItemId: server.id,
+    };
+  });
+}
+
 /* ---------- Proveedor ---------- */
 
 export function CartProvider({ children }: { children: ReactNode }) {
@@ -113,17 +134,31 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const authRef = useRef(isAuthenticated);
   const hydratedRef = useRef(false);
+  const mutationQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+  const serverIdsByKeyRef = useRef<Map<string, number>>(new Map());
+
+  // Encadena cada mutación al servidor para que las respuestas nunca lleguen
+  // fuera de orden ni sobreescriban operaciones más recientes.
+  function enqueueMutation(task: () => Promise<unknown>) {
+    const run = mutationQueueRef.current.then(task, task);
+    const guarded = run.catch(() => {});
+    mutationQueueRef.current = guarded;
+    return guarded;
+  }
+
+  function rememberServerIds(serverItems: ServerCartItem[]) {
+    serverItems.forEach(si =>
+      serverIdsByKeyRef.current.set(getCartKey(si.product.id, si.variant?.id), si.id)
+    );
+  }
 
   // Sincronizar con el servidor cuando cambia la autenticación
   useEffect(() => {
-    const prevAuth = authRef.current;
     authRef.current = isAuthenticated;
 
     if (!isAuthenticated) {
       hydratedRef.current = false;
-      if (prevAuth) {
-        clearStoredCart();
-      }
+      serverIdsByKeyRef.current.clear();
       return;
     }
 
@@ -136,9 +171,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
       : getCartApi();
 
     request
-      .then(res => writeCart(mapItems(res.data.items)))
+      .then(res => {
+        rememberServerIds(res.data.items);
+        writeCart(mapItems(res.data.items));
+      })
       .catch(() => { /* conservar el carrito local si falla la sincronización */ });
   }, [isAuthenticated]);
+
+  // Solo el logout explícito limpia el carrito local; un token inválido o un
+  // fallo de backend no deben borrar el carrito del invitado.
+  useEffect(() => {
+    const handleLogout = () => {
+      hydratedRef.current = false;
+      serverIdsByKeyRef.current.clear();
+      clearStoredCart();
+    };
+    window.addEventListener(AUTH_LOGOUT_EVENT, handleLogout);
+    return () => window.removeEventListener(AUTH_LOGOUT_EVENT, handleLogout);
+  }, []);
 
   const addItem = useCallback((product: Product, quantity = 1, variant?: ProductVariant) => {
     const availableStock = variant ? variant.stock : product.stock;
@@ -149,31 +199,43 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
     setIsOpen(true);
 
-    const applyLocal = () => {
-      const current = getCartSnapshot();
-      const key = getCartKey(product.id, variant?.id);
-      const existing = current.find(
-        item => getCartKey(item.product.id, item.variant?.id) === key
+    const key = getCartKey(product.id, variant?.id);
+    const current = getCartSnapshot();
+    const existing = current.find(
+      item => getCartKey(item.product.id, item.variant?.id) === key
+    );
+    const addQty = Math.min(quantity, availableStock);
+
+    let next: CartItem[];
+    if (existing) {
+      next = current.map(item =>
+        getCartKey(item.product.id, item.variant?.id) === key
+          ? { ...item, quantity: Math.min(existing.quantity + addQty, availableStock) }
+          : item
       );
-      let next: CartItem[];
-      if (existing) {
-        next = current.map(item =>
-          getCartKey(item.product.id, item.variant?.id) === key
-            ? { ...item, quantity: Math.min(existing.quantity + quantity, availableStock) }
-            : item
-        );
-      } else {
-        next = [...current, { product, quantity: Math.min(quantity, availableStock), variant }];
-      }
-      writeCart(next);
-    };
+    } else {
+      next = [...current, { product, quantity: addQty, variant }];
+    }
+    writeCart(next);
 
     if (authRef.current) {
-      addCartItemApi(product.id, quantity, variant?.id)
-        .then(res => writeCart(mapItems(res.data.items)))
-        .catch(applyLocal);
-    } else {
-      applyLocal();
+      enqueueMutation(() =>
+        addCartItemApi(product.id, quantity, variant?.id)
+          .then(res => {
+            rememberServerIds(res.data.items);
+            writeCart(mergeServerItems(res.data.items));
+
+            // Si el ítem se eliminó localmente mientras se agregaba, se borra
+            // también del servidor para no dejar huérfanos.
+            const stillInCart = getCartSnapshot().some(
+              item => getCartKey(item.product.id, item.variant?.id) === key
+            );
+            const serverItemId = serverIdsByKeyRef.current.get(key);
+            if (!stillInCart && serverItemId) {
+              enqueueMutation(() => removeCartItemApi(serverItemId).then(() => {}));
+            }
+          })
+      );
     }
   }, []);
 
@@ -188,10 +250,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
       item => getCartKey(item.product.id, item.variant?.id) !== key
     ));
 
-    if (authRef.current && target?.serverItemId) {
-      removeCartItemApi(target.serverItemId)
-        .then(res => writeCart(mapItems(res.data.items)))
-        .catch(() => {});
+    const serverItemId = target?.serverItemId ?? serverIdsByKeyRef.current.get(key);
+    if (authRef.current && serverItemId) {
+      enqueueMutation(() =>
+        removeCartItemApi(serverItemId)
+          .then(res => {
+            rememberServerIds(res.data.items);
+            writeCart(mergeServerItems(res.data.items));
+          })
+      );
     }
   }, []);
 
@@ -213,17 +280,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
         : item
     ));
 
-    if (authRef.current && target?.serverItemId) {
-      updateCartItemApi(target.serverItemId, quantity)
-        .then(res => writeCart(mapItems(res.data.items)))
-        .catch(() => {});
+    const serverItemId = target?.serverItemId ?? serverIdsByKeyRef.current.get(key);
+    if (authRef.current && serverItemId) {
+      enqueueMutation(() =>
+        updateCartItemApi(serverItemId, quantity)
+          .then(res => {
+            rememberServerIds(res.data.items);
+            writeCart(mergeServerItems(res.data.items));
+          })
+      );
     }
   }, [removeItem]);
 
   const clearCart = useCallback(() => {
     clearStoredCart();
+    serverIdsByKeyRef.current.clear();
     if (authRef.current) {
-      clearCartApi().catch(() => {});
+      enqueueMutation(() => clearCartApi().then(() => {}));
     }
   }, []);
 

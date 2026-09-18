@@ -41,21 +41,21 @@ export default function RegisterPage() {
   return (
     <div className="min-h-full flex items-center justify-center py-12 px-4 bg-[#F8F9FA]">
       <div className="w-full max-w-md">
-        <div className="max-w-7xl mx-auto px-34 py-5 flex justify-between items-center">
-          <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-[#000000] bg-white flex-shrink-0">
-                        <Image
-                          src="/images/gato20.png"
-                          alt="Logo jugueteria el gato"
-                          fill
-                          className="object-contain"
-                          priority
-                        />
-                      </div>
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 py-5 flex justify-center items-center gap-3">
+          <div className="relative w-14 h-14 rounded-full overflow-hidden bg-white flex-shrink-0">
+            <Image
+              src="/images/gato20.png"
+              alt="Logo jugueteria el gato"
+              fill
+              sizes="56px"
+              className="object-contain"
+              priority
+            />
+          </div>
           <div>
             <h1 className="font-kaushan text-3xl text-[#2B2D42]">El Gato</h1>
             <p className="text-sm text-[#2B2D42]/70 mt-1">Crea tu cuenta</p>
           </div>
-
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-sm p-8 space-y-6 border-t-4 border-[#6EBA92]">

@@ -23,6 +23,8 @@ function getToken(): string | null {
   return localStorage.getItem('token');
 }
 
+const REQUEST_TIMEOUT_MS = 20000;
+
 async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -31,10 +33,36 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_URL}${endpoint}`, {
-    headers: { ...headers, ...options?.headers as Record<string, string> },
-    ...options,
-  });
+  const controller = new AbortController();
+  const externalSignal = options?.signal;
+  const onExternalAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort();
+    } else {
+      externalSignal.addEventListener('abort', onExternalAbort);
+    }
+  }
+
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers: { ...headers, ...options?.headers as Record<string, string> },
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (controller.signal.aborted && !externalSignal?.aborted) {
+      throw new Error('El servidor tardó demasiado en responder. Inténtalo de nuevo.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+    externalSignal?.removeEventListener('abort', onExternalAbort);
+  }
+
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const error = new Error(body.message || `API error: ${res.status}`) as Error & { errors?: Record<string, string[]>; status?: number };

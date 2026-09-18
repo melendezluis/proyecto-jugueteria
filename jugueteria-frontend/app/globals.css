@@ -15,6 +15,11 @@
   --font-kaushan: var(--font-kaushan);
 }
 
+html,
+body {
+  overflow-x: clip;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -27,7 +32,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 2rem 4rem;
+  padding: 2rem;
   background-color: #F8F9FA;
   gap: 2rem;
 }
@@ -64,8 +69,18 @@ body {
 @media (max-width: 1024px) {
   .login-page {
     flex-direction: column;
-    padding: 2rem;
-    gap: 2rem;
+    padding: 1.5rem;
+    gap: 1.5rem;
+  }
+  
+  .login-image-container {
+    order: 2;
+    margin-top: 0;
+  }
+
+  .login-form-container {
+    order: 1;
+    margin-bottom: 0;
   }
   
   .login-image-container,
