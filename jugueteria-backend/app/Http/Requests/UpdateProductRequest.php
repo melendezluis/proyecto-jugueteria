@@ -32,6 +32,27 @@ class UpdateProductRequest extends FormRequest
             'is_active' => 'boolean',
             'category_id' => 'sometimes|exists:categories,id',
             'brand_id' => 'sometimes|exists:brands,id',
+            'images' => 'nullable|array',
+            'images.*' => 'file|image|max:10240',
+            'image_alts' => 'nullable|array',
+            'image_alts.*' => 'nullable|string|max:255',
+            'variants' => 'nullable|array',
+            'variants.*.sku' => 'nullable|string|max:255',
+            'variants.*.color' => 'nullable|string|max:255',
+            'variants.*.size' => 'nullable|string|max:255',
+            'variants.*.stock' => 'required|integer|min:0',
+            'variants.*.price_extra' => 'nullable|numeric|min:0',
+            'variants.*.is_active' => 'nullable|boolean',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'images.*.image' => 'Cada imagen debe ser un archivo de imagen válido.',
+            'images.*.max' => 'Cada imagen no debe pesar más de :max kilobytes.',
+            'variants.*.stock.required' => 'El stock de cada variante es obligatorio.',
+            'variants.*.stock.integer' => 'El stock de cada variante debe ser un número entero.',
         ];
     }
 }

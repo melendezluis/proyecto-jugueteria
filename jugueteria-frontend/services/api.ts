@@ -9,12 +9,26 @@ import type {
   ProductVariant,
 } from '@/types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const ENV_API_URL = process.env.NEXT_PUBLIC_API_URL || '/api-proxy';
+
+function isRelativeUrl(url: string): boolean {
+  return url.startsWith('/');
+}
+
+function getApiBase(): string {
+  if (!isRelativeUrl(ENV_API_URL)) return ENV_API_URL;
+  return typeof window === 'undefined' ? 'http://localhost:8000/api' : ENV_API_URL;
+}
+
+function getAssetsBase(): string {
+  if (isRelativeUrl(ENV_API_URL)) return '';
+  return ENV_API_URL.replace(/\/api\/?$/, '');
+}
 
 export function getImageUrl(path: string | null | undefined): string | null {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
-  const base = API_URL.replace(/\/api\/?$/, '');
+  const base = getAssetsBase();
   return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
 }
 
@@ -48,7 +62,7 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
 
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${endpoint}`, {
+    res = await fetch(`${getApiBase()}${endpoint}`, {
       ...options,
       headers: { ...headers, ...options?.headers as Record<string, string> },
       signal: controller.signal,
