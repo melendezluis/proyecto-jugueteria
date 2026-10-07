@@ -1,34 +1,45 @@
 'use client';
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import ProductCard from '@/components/ProductCard';
 import PromoBar from '@/components/home/PromoBar';
-import { getBrands } from '@/services/api';
+import HeroCarousel from '@/components/home/HeroCarousel';
+import OffersSection from '@/components/home/OffersSection';
+import FeaturedProducts from '@/components/home/FeaturedProducts';
+import WhatsAppButton from '@/components/home/WhatsAppButton';
+import { getBrands, getProducts, GRID_PAGE_SIZE } from '@/services/api';
+import type { ProductQueryParams } from '@/services/api';
 import type { Product, Category, Brand } from '@/types';
 
 interface HomeContentProps {
   initialProducts: Product[];
+  initialTotal?: number;
   categories: Category[];
   children?: React.ReactNode;
   heading?: React.ReactNode;
   showSort?: boolean;
+  home?: boolean;
+  queryParams?: ProductQueryParams;
+  initialSort?: SortOption;
 }
 
-type SortOption = 'az' | 'za' | 'price_asc' | 'price_desc';
+type SortOption = 'az' | 'za' | 'price_asc' | 'price_desc' | 'discount';
 
 const SORT_OPTIONS: { id: SortOption; label: string }[] = [
   { id: 'az', label: 'Alfabéticamente A-Z' },
   { id: 'za', label: 'Alfabéticamente Z-A' },
   { id: 'price_asc', label: 'Precio menor a mayor' },
   { id: 'price_desc', label: 'Precio mayor a menor' },
+  { id: 'discount', label: 'Mayor descuento' },
 ];
 
-const INITIAL_VISIBLE = 8;
-const LOAD_STEP = 8;
-
-function effectivePrice(p: Product): number {
-  return p.offer_price ?? p.price;
-}
+const SORT_QUERY: Record<SortOption, { by: string; order: 'asc' | 'desc' }> = {
+  az: { by: 'name', order: 'asc' },
+  za: { by: 'name', order: 'desc' },
+  price_asc: { by: 'price', order: 'asc' },
+  price_desc: { by: 'price', order: 'desc' },
+  discount: { by: 'discount', order: 'desc' },
+};
 
 interface AgeRange {
   id: string;
@@ -337,20 +348,35 @@ function SortMenu({ sort, onChange }: { sort: SortOption; onChange: (o: SortOpti
 /* ------------------------------------------------------------------ */
 /* Componente principal                                                 */
 /* ------------------------------------------------------------------ */
-export default function HomeContent({ initialProducts, categories, children, heading, showSort = false }: HomeContentProps) {
+export default function HomeContent({
+  initialProducts,
+  initialTotal,
+  categories,
+  children,
+  heading,
+  showSort = false,
+  home = false,
+  queryParams,
+  initialSort = 'az',
+}: HomeContentProps) {
+  const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<number | null>(null);
   const [selectedAge, setSelectedAge] = useState<string | null>(null);
   const [selectedPrice, setSelectedPrice] = useState<string | null>(null);
-  const [sort, setSort] = useState<SortOption>('az');
+  const [sort, setSort] = useState<SortOption>(initialSort);
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [total, setTotal] = useState(initialTotal ?? initialProducts.length);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [lastPage, setLastPage] = useState(Math.max(1, Math.ceil(total / GRID_PAGE_SIZE)));
+  const [productsError, setProductsError] = useState('');
+  const [loadingProducts, setLoadingProducts] = useState(initialProducts.length === 0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState('');
   const [openMenu, setOpenMenu] = useState<MenuId | null>(null);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [pagination, setPagination] = useState<{ signature: string; count: number }>({
-    signature: '',
-    count: INITIAL_VISIBLE,
-  });
 
   useEffect(() => {
     getBrands()
@@ -358,52 +384,100 @@ export default function HomeContent({ initialProducts, categories, children, hea
       .catch(() => {});
   }, []);
 
+  // Búsqueda con debounce: el servidor filtra por el término escrito.
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchTerm(searchInput), 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
   const ageRange = AGE_RANGES.find(r => r.id === selectedAge) ?? null;
   const priceRange = PRICE_RANGES.find(r => r.id === selectedPrice) ?? null;
 
-  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const buildQuery = useCallback(
+    (page: number): Record<string, string | string[] | number | undefined> => {
+      const params: Record<string, string | string[] | number | undefined> = { ...queryParams };
+      if (searchTerm.trim()) params.search = searchTerm.trim();
+      if (selectedCategory !== null) params.category_id = selectedCategory;
+      if (selectedBrand !== null) params.brand_id = selectedBrand;
+      if (ageRange) {
+        params.min_age = ageRange.min;
+        params.max_age = ageRange.max;
+      }
+      if (priceRange) {
+        params.min_price = priceRange.min;
+        params.max_price = priceRange.max;
+      }
+      params.sort_by = SORT_QUERY[sort].by;
+      params.sort_order = SORT_QUERY[sort].order;
+      params.per_page = GRID_PAGE_SIZE;
+      params.page = page;
+      return params;
+    },
+    [queryParams, searchTerm, selectedCategory, selectedBrand, ageRange, priceRange, sort]
+  );
 
-  const filteredProducts = initialProducts.filter(product => {
-    const matchesSearch =
-      !normalizedSearch ||
-      product.name.toLowerCase().includes(normalizedSearch) ||
-      product.brand?.name.toLowerCase().includes(normalizedSearch) ||
-      product.category?.name.toLowerCase().includes(normalizedSearch);
-    const matchesCategory = selectedCategory === null || product.category?.id === selectedCategory;
-    const matchesBrand = selectedBrand === null || product.brand?.id === selectedBrand;
-    const productAgeFrom = product.age_from ?? 0;
-    const productAgeTo = product.age_to ?? 999;
-    const matchesAge = !ageRange || (productAgeFrom <= ageRange.max && productAgeTo >= ageRange.min);
-    const effectivePrice = product.offer_price ?? product.price;
-    const matchesPrice = !priceRange || (effectivePrice >= priceRange.min && effectivePrice <= priceRange.max);
-    return matchesSearch && matchesCategory && matchesBrand && matchesAge && matchesPrice;
-  });
+  const firstPageKey = useMemo(() => JSON.stringify(buildQuery(1)), [buildQuery]);
 
-  const sortedProducts = useMemo(() => {
-    const arr = [...filteredProducts];
-    switch (sort) {
-      case 'az':
-        arr.sort((a, b) => a.name.localeCompare(b.name, 'es'));
-        break;
-      case 'za':
-        arr.sort((a, b) => b.name.localeCompare(a.name, 'es'));
-        break;
-      case 'price_asc':
-        arr.sort((a, b) => effectivePrice(a) - effectivePrice(b));
-        break;
-      case 'price_desc':
-        arr.sort((a, b) => effectivePrice(b) - effectivePrice(a));
-        break;
-    }
-    return arr;
-  }, [filteredProducts, sort]);
+  // La página 1 ya viene del SSR con esa misma consulta: evitamos volver a pedirla.
+  // Si el SSR no logró traer datos, partimos de una clave distinta para refetchear.
+  const hydratedQueryRef = useRef<string>(initialProducts.length > 0 ? firstPageKey : '');
 
-  const filterSignature = `${normalizedSearch}|${selectedCategory}|${selectedBrand}|${selectedAge}|${selectedPrice}|${sort}`;
-  const visibleCount = pagination.signature === filterSignature ? pagination.count : INITIAL_VISIBLE;
-  const visibleProducts = sortedProducts.slice(0, visibleCount);
-  const hasMoreProducts = visibleCount < sortedProducts.length;
+  const loadFirstPage = useCallback(
+    (key: string) => {
+      hydratedQueryRef.current = key;
+      setCurrentPage(1);
+      setLoadingProducts(true);
+      setProductsError('');
+      setLoadMoreError('');
+      getProducts(buildQuery(1))
+        .then(res => {
+          if (hydratedQueryRef.current !== key) return;
+          setProducts(res.data);
+          setTotal(res.pagination.total);
+          setLastPage(res.pagination.last_page);
+        })
+        .catch(() => {
+          if (hydratedQueryRef.current !== key) return;
+          setProductsError('No se pudieron cargar los productos. Recarga la página o inténtalo de nuevo.');
+        })
+        .finally(() => {
+          if (hydratedQueryRef.current === key) setLoadingProducts(false);
+        });
+    },
+    [buildQuery]
+  );
 
-  const isSearching = normalizedSearch.length > 0;
+  useEffect(() => {
+    if (hydratedQueryRef.current === firstPageKey) return;
+    loadFirstPage(firstPageKey);
+  }, [firstPageKey, loadFirstPage]);
+
+  function handleLoadMore() {
+    if (loadingProducts || loadingMore) return;
+    const key = firstPageKey;
+    const nextPage = currentPage + 1;
+    setLoadingMore(true);
+    setLoadMoreError('');
+    getProducts(buildQuery(nextPage))
+      .then(res => {
+        if (hydratedQueryRef.current !== key) return;
+        setProducts(prev => [...prev, ...res.data]);
+        setCurrentPage(nextPage);
+        setLastPage(res.pagination.last_page);
+        setTotal(res.pagination.total);
+      })
+      .catch(() => {
+        if (hydratedQueryRef.current === key) setLoadMoreError('No se pudieron cargar más juguetes. Inténtalo de nuevo.');
+      })
+      .finally(() => setLoadingMore(false));
+  }
+
+  function handleShowLess() {
+    loadFirstPage(firstPageKey);
+  }
+
+  const hasMoreProducts = currentPage < lastPage;
+  const isSearching = searchTerm.trim().length > 0;
 
   const activeFilterLabel =
     categories.find(c => c.id === selectedCategory)?.name ??
@@ -526,8 +600,8 @@ export default function HomeContent({ initialProducts, categories, children, hea
                 key="search-input"
                 type="text"
                 placeholder="Buscar juguetes, marca o categorias"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="px-4 py-1.5 border border-white/40 rounded-full focus:outline-none focus:border-[#FFD54F] bg-white text-[#2B2D42] placeholder:text-gray-400 text-sm w-56 lg:w-72"
               />
             </div>
@@ -656,7 +730,20 @@ export default function HomeContent({ initialProducts, categories, children, hea
 
       {/* CONTENIDO PRINCIPAL */}
       <div className="max-w-7xl mx-auto px-6 py-6">
-        {!isSearching && !hasActiveFilters && <div className="space-y-12">{children}</div>}
+        {!isSearching && !hasActiveFilters && (
+          <div className="space-y-12">
+            {home ? (
+              <>
+                <HeroCarousel />
+                <OffersSection />
+                <FeaturedProducts />
+                <WhatsAppButton />
+              </>
+            ) : (
+              children
+            )}
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center justify-between gap-3 mt-8 mb-6 md:mt-12 md:mb-8">
           <div key="heading-block" id="productos">
@@ -683,7 +770,7 @@ export default function HomeContent({ initialProducts, categories, children, hea
   key="show-all"
   onClick={() => {
     clearAllFilters();
-    setSearchTerm('');
+    setSearchInput('');
   }}
   className="group relative px-6 py-2.5 text-sm font-medium text-[#7F9E9F] hover:text-white transition-colors duration-300 rounded-full border-2 border-[#7F9E9F] hover:border-transparent bg-transparent overflow-hidden"
 >
@@ -699,7 +786,7 @@ export default function HomeContent({ initialProducts, categories, children, hea
           </div>
         </div>
 
-        {sortedProducts.length === 0 ? (
+        {products.length === 0 ? (
           <div className="relative text-center py-16 px-6 bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
   
   {/* Fondo decorativo sutil (burbujas de colores) */}
@@ -743,6 +830,20 @@ export default function HomeContent({ initialProducts, categories, children, hea
           Parece que ese juguete se escondió muy bien. Revisa la ortografía o intenta con otra palabra mágica.
         </p>
       </>
+    ) : loadingProducts ? (
+      <p className="text-gray-500 mt-3 font-nunito max-w-md mx-auto text-lg">
+        Cargando juguetes...
+      </p>
+    ) : productsError ? (
+      <>
+        <p className="text-red-500 mt-3 font-nunito max-w-md mx-auto text-lg">{productsError}</p>
+        <button
+          onClick={() => loadFirstPage(firstPageKey)}
+          className="mt-8 inline-flex items-center gap-2 px-8 py-3.5 bg-[#6EBA92] hover:bg-[#4F916C] text-white rounded-full font-bold text-lg shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5"
+        >
+          Reintentar
+        </button>
+      </>
     ) : (
       <>
         <h3 className="text-3xl text-[#2B2D42] font-fredoka font-bold">
@@ -757,7 +858,7 @@ export default function HomeContent({ initialProducts, categories, children, hea
     {/* Botón de acción principal */}
     <button
       onClick={() => {
-        setSearchTerm('');
+        setSearchInput('');
         clearAllFilters();
       }}
       className="mt-8 group relative inline-flex items-center gap-2 px-8 py-3.5 bg-[#6EBA92] hover:bg-[#4F916C] text-white rounded-full font-bold text-lg shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5"
@@ -786,22 +887,20 @@ export default function HomeContent({ initialProducts, categories, children, hea
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              {visibleProducts.map(product => (
+              {products.map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>
 
-            {(hasMoreProducts || visibleCount > INITIAL_VISIBLE) && (
-              <div className="text-center mt-12">
+            <div className="text-center mt-12">
+              {loadMoreError && (
+                <p className="text-red-500 font-nunito mb-4">{loadMoreError}</p>
+              )}
+              {hasMoreProducts && (
                 <div className="flex flex-wrap items-center justify-center gap-4">
-                  {visibleCount > INITIAL_VISIBLE && (
+                  {currentPage > 1 && (
                     <button
-                      onClick={() =>
-                        setPagination({
-                          signature: filterSignature,
-                          count: Math.max(INITIAL_VISIBLE, visibleCount - LOAD_STEP),
-                        })
-                      }
+                      onClick={handleShowLess}
                       className="group inline-flex items-center gap-3 bg-white border-2 border-[#6EBA92] text-[#4F916C] hover:bg-[#EAF6EF] font-bold text-base sm:text-lg px-10 py-4 rounded-full transition-all hover:-translate-y-0.5 active:scale-95"
                     >
                       <svg
@@ -821,30 +920,46 @@ export default function HomeContent({ initialProducts, categories, children, hea
                     </button>
                   )}
 
-                  {hasMoreProducts && (
-                    <button
-                      onClick={() => setPagination({ signature: filterSignature, count: visibleCount + LOAD_STEP })}
-                      className="group inline-flex items-center gap-3 bg-[#6EBA92] hover:bg-[#4F916C] text-white font-bold text-base sm:text-lg px-10 py-4 rounded-full shadow-lg shadow-[#6EBA92]/30 hover:shadow-xl transition-all hover:-translate-y-0.5 active:scale-95"
-                    >
-                      Ver más
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="w-5 h-5 transition-transform duration-300 group-hover:translate-y-1"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2.25}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M12 5v14" />
-                        <path d="m19 12-7 7-7-7" />
-                      </svg>
-                    </button>
-                  )}
+                  <button
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                    className="group inline-flex items-center gap-3 bg-[#6EBA92] hover:bg-[#4F916C] disabled:opacity-60 text-white font-bold text-base sm:text-lg px-10 py-4 rounded-full shadow-lg shadow-[#6EBA92]/30 hover:shadow-xl transition-all hover:-translate-y-0.5 active:scale-95"
+                  >
+                    {loadingMore ? (
+                      <>
+                        <svg
+                          className="w-5 h-5 animate-spin"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                        </svg>
+                        Cargando...
+                      </>
+                    ) : (
+                      <>
+                        Ver más
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="w-5 h-5 transition-transform duration-300 group-hover:translate-y-1"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={2.25}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M12 5v14" />
+                          <path d="m19 12-7 7-7-7" />
+                        </svg>
+                      </>
+                    )}
+                  </button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </>
         )}
       </div>

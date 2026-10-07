@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
+import { getProducts } from '@/services/api';
 import type { Product } from '@/types';
 
 function formatTime(value: number): string {
@@ -22,8 +23,26 @@ function getTimeLeft(): { hours: number; minutes: number; seconds: number } | nu
   };
 }
 
-export default function OffersSection({ offers }: { offers: Product[] }) {
-  if (offers.length === 0) return null;
+export default function OffersSection() {
+  const [offers, setOffers] = useState<Product[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    getProducts({ per_page: '8', offer: '1', sort_by: 'discount', sort_order: 'desc' })
+      .then(res => {
+        if (mounted) setOffers(res.data);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (mounted) setLoaded(true);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (!loaded || offers.length === 0) return null;
   return <OffersContent offers={offers} />;
 }
 

@@ -11,6 +11,9 @@ import type {
 
 const ENV_API_URL = process.env.NEXT_PUBLIC_API_URL || '/api-proxy';
 
+// Productos por página en la grilla pública del catálogo.
+export const GRID_PAGE_SIZE = 12;
+
 function isRelativeUrl(url: string): boolean {
   return url.startsWith('/');
 }
@@ -87,9 +90,20 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
   return res.json();
 }
 
-export function getProducts(params?: Record<string, string>) {
-  const query = params ? '?' + new URLSearchParams(params).toString() : '';
-  return fetchApi<ProductsResponse>(`/products${query}`);
+export type ProductQueryParams = Record<string, string | string[] | number | undefined>;
+
+export function getProducts(params?: ProductQueryParams) {
+  if (!params) return fetchApi<ProductsResponse>('/products');
+  const usp = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === '') continue;
+    if (Array.isArray(value)) {
+      for (const item of value) usp.append(`${key}[]`, String(item));
+    } else {
+      usp.append(key, String(value));
+    }
+  }
+  return fetchApi<ProductsResponse>(`/products?${usp.toString()}`);
 }
 
 export function getProductBySlug(slug: string) {
@@ -106,6 +120,16 @@ export function getCategories() {
 
 export function getBrands() {
   return fetchApi<BrandsResponse>('/brands');
+}
+
+// Envío
+export interface ShippingConfig {
+  flat_rate: number;
+  free_threshold: number | null;
+}
+
+export function getShippingConfig() {
+  return fetchApi<{ success: boolean; data: ShippingConfig }>('/shipping');
 }
 
 // Auth
@@ -171,7 +195,6 @@ export interface CreateOrderPayload {
   shipping_address: string;
   shipping_city: string;
   shipping_notes?: string;
-  shipping?: number;
   items: { product_id: number; quantity: number; variant_id?: number }[];
 }
 
