@@ -1,20 +1,42 @@
 'use client';
 
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 import ProductCard from '@/components/ProductCard';
+import { getProducts } from '@/services/api';
 import type { Product } from '@/types';
 
 const PREVIEW_COUNT = 5;
 
-export default function FeaturedProducts({ products }: { products: Product[] }) {
+export default function FeaturedProducts() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    getProducts({ per_page: '12', featured: '1' })
+      .then(res => {
+        if (mounted) setProducts(res.data);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (mounted) setLoaded(true);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (!loaded || products.length === 0) return null;
+  return <FeaturedGrid products={products} />;
+}
+
+function FeaturedGrid({ products }: { products: Product[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
 
   const scroll = useCallback((direction: number) => {
     scrollRef.current?.scrollBy({ left: direction * 640, behavior: 'smooth' });
   }, []);
-
-  if (products.length === 0) return null;
 
   const previewProducts = products.slice(0, PREVIEW_COUNT);
   const hasMore = products.length > PREVIEW_COUNT;

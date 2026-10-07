@@ -5,9 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
+import { useShippingConfig, calculateShipping } from '@/hooks/useShippingConfig';
 import { createOrder, createPreference } from '@/services/api';
-
-const SHIPPING_COST = 10;
 
 interface ApiError extends Error {
   errors?: Record<string, string[]>;
@@ -205,6 +204,7 @@ function ErrorText({ message }: { message?: string }) {
 function CheckoutForm({ user }: { user: CheckoutUser }) {
   const router = useRouter();
   const { items, totalPrice } = useCart();
+  const shippingConfig = useShippingConfig();
 
   const [fullname, setFullname] = useState(user.name);
   const [phone, setPhone] = useState('');
@@ -216,7 +216,7 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
   const [submitting, setSubmitting] = useState(false);
 
   const subtotal = totalPrice;
-  const shipping = items.length > 0 ? SHIPPING_COST : 0;
+  const shipping = calculateShipping(subtotal, shippingConfig);
   const total = subtotal + shipping;
   const totalUnits = items.reduce((acc, item) => acc + item.quantity, 0);
 
@@ -252,7 +252,6 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
         shipping_address: address,
         shipping_city: city,
         shipping_notes: notes || undefined,
-        shipping,
         items: items.map(item => ({
           product_id: item.product.id,
           quantity: item.quantity,

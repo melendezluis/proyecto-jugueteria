@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
+use App\Notifications\OrderStatusNotification;
 use App\Services\MercadoPagoService;
+use App\Support\OrderNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use MercadoPago\Exceptions\MPApiException;
@@ -260,6 +262,15 @@ class PaymentController
                 'payment_id' => (string) $payment->id,
                 'payment_method' => $payment->payment_method_id,
             ]);
+
+            $order->loadMissing('user');
+            OrderNotifier::send($order->user, new OrderStatusNotification(
+                order: $order,
+                type: 'order-rejected',
+                subject: "No pudimos procesar el pago de tu pedido {$order->order_number}",
+                message: 'Tu pago fue rechazado. Puedes intentarlo nuevamente desde tu pedido.',
+                url: "/order-confirmation/{$order->id}",
+            ));
         }
     }
 

@@ -1,6 +1,6 @@
 import HomeContent from '@/components/HomeContent';
-import { getCategories, getProducts } from '@/services/api';
-import type { Category, Product } from '@/types';
+import { getCategories, getProducts, GRID_PAGE_SIZE } from '@/services/api';
+import type { ProductsResponse, CategoriesResponse } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,29 +35,32 @@ const DISCOUNT_BADGE = (
   </div>
 );
 
-function hasOffer(p: Product): boolean {
-  return p.offer_price !== null && p.offer_price < p.price;
-}
+const OFFER_QUERY: Record<string, string> = { offer: '1' };
 
 export default async function DescuentosPage() {
-  let categories: Category[] = [];
-  let products: Product[] = [];
+  let categories: CategoriesResponse = { success: true, data: [] };
+  let products: ProductsResponse | null = null;
 
   try {
     const [categoriesResponse, productsResponse] = await Promise.all([
       getCategories(),
-      getProducts({ per_page: '1000' }),
+      getProducts({ per_page: GRID_PAGE_SIZE, offer: '1', sort_by: 'discount', sort_order: 'desc' }),
     ]);
-    categories = categoriesResponse.data;
-    products = productsResponse.data;
+    categories = categoriesResponse;
+    products = productsResponse;
   } catch (error) {
     console.error('Error al cargar productos/categorías en descuentos:', error);
   }
 
-  const offers = products.filter(hasOffer).sort(
-    (a, b) =>
-      ((b.price - b.offer_price!) / b.price) - ((a.price - a.offer_price!) / a.price)
+  return (
+    <HomeContent
+      initialProducts={products?.data ?? []}
+      initialTotal={products?.pagination.total ?? 0}
+      categories={categories.data}
+      heading={DISCOUNT_BADGE}
+      showSort
+      queryParams={OFFER_QUERY}
+      initialSort="discount"
+    />
   );
-
-  return <HomeContent initialProducts={offers} categories={categories} heading={DISCOUNT_BADGE} showSort />;
 }

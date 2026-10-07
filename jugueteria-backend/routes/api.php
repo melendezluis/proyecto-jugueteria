@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\ShippingController;
 use Illuminate\Support\Facades\Route;
 
 // ====================== API PARA LA JUGUETERÍA ======================
@@ -27,6 +28,9 @@ Route::get('/categories/{id}', [CategoryController::class, 'show']);
 
 Route::get('/brands', [BrandController::class, 'index']);
 Route::get('/brands/{id}', [BrandController::class, 'show']);
+
+// Costo de envío (público — el cobro real lo calcula el servidor al crear la orden)
+Route::get('/shipping', [ShippingController::class, 'index']);
 
 // Webhook de Mercado Pago (público)
 Route::post('/payment/webhook', [PaymentController::class, 'webhook']);

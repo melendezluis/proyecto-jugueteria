@@ -2,10 +2,9 @@
 
 import { useCart } from '@/contexts/CartContext';
 import { getImageUrl } from '@/services/api';
+import { useShippingConfig } from '@/hooks/useShippingConfig';
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
-
-const SHIPPING_COST = 10;
 
 type IconProps = { className?: string };
 
@@ -55,6 +54,7 @@ function LockIcon({ className }: IconProps) {
 
 export default function CartSidebar() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, totalPrice } = useCart();
+  const { flat_rate: shippingCost } = useShippingConfig();
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -133,7 +133,10 @@ export default function CartSidebar() {
           ) : (
             items.map(item => {
               const itemPrice = item.product.offer_price ?? item.product.price;
+              const unitPrice = itemPrice + (item.variant?.price_extra ?? 0);
+              const lineTotal = unitPrice * item.quantity;
               const hasOffer = item.product.offer_price !== null && item.product.offer_price < item.product.price;
+              const struckUnitPrice = item.product.price + (item.variant?.price_extra ?? 0);
               const thumb = item.product.images[0]?.image_path ?? null;
               return (
                 <div
@@ -164,11 +167,11 @@ export default function CartSidebar() {
                       </p>
                     )}
                     <div className="flex items-baseline gap-2 mt-1">
-                      <span className="text-sm font-bold text-[#287FF0]">S/ {(itemPrice * item.quantity).toFixed(2)}</span>
+                      <span className="text-sm font-bold text-[#287FF0]">S/ {lineTotal.toFixed(2)}</span>
                       {hasOffer && (
-                        <span className="text-xs text-gray-400 line-through">S/ {(item.product.price * item.quantity).toFixed(2)}</span>
+                        <span className="text-xs text-gray-400 line-through">S/ {(struckUnitPrice * item.quantity).toFixed(2)}</span>
                       )}
-                      <span className="text-[11px] text-gray-400">· S/ {itemPrice.toFixed(2)} c/u</span>
+                      <span className="text-[11px] text-gray-400">· S/ {unitPrice.toFixed(2)} c/u</span>
                     </div>
                   </div>
                   <div className="flex flex-col items-end justify-between flex-shrink-0">
@@ -213,14 +216,14 @@ export default function CartSidebar() {
               </div>
               <div className="flex justify-between">
                 <span>Envío</span>
-                <span className="font-semibold text-gray-800">S/ {SHIPPING_COST.toFixed(2)}</span>
+                <span className="font-semibold text-gray-800">S/ {shippingCost.toFixed(2)}</span>
               </div>
             </div>
 
             <div className="flex justify-between items-center bg-[#E7EBFE] rounded-2xl px-4 py-3">
               <span className="font-bold text-gray-800">Total</span>
               <span className="text-2xl font-extrabold text-[#1B66D0]">
-                S/ {(totalPrice + SHIPPING_COST).toFixed(2)}
+                S/ {(totalPrice + shippingCost).toFixed(2)}
               </span>
             </div>
 
