@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Notifications\OrderStatusNotification;
+use App\Support\OrderNotifier;
 
 class OrderObserver
 {
@@ -15,7 +16,7 @@ class OrderObserver
 
         $total = number_format((float) $order->total, 2, '.', '');
 
-        $order->user->notify(new OrderStatusNotification(
+        OrderNotifier::send($order->user, new OrderStatusNotification(
             order: $order,
             type: 'order-created',
             subject: "Pedido {$order->order_number} registrado",
@@ -33,10 +34,21 @@ class OrderObserver
             return;
         }
 
-        // Al cancelar una orden se libera el stock que estaba reservado
+        // Al cancelar una orden se libera el stock que estaba reservado y se avisa al cliente
         if ($newStatus === 'cancelled' && ! $order->cancelled_at) {
             $order->cancelled_at = now();
             $this->releaseStock($order);
+
+            $order->loadMissing('user');
+            $total = number_format((float) $order->total, 2, '.', '');
+
+            OrderNotifier::send($order->user, new OrderStatusNotification(
+                order: $order,
+                type: 'order-cancelled',
+                subject: "Pedido {$order->order_number} cancelado",
+                message: "Tu pedido {$order->order_number} por S/ {$total} fue cancelado y no se procesó el pago. Si igual realizaste un pago, escríbenos para ayudarte.",
+                url: "/order-confirmation/{$order->id}",
+            ));
 
             return;
         }
@@ -44,7 +56,7 @@ class OrderObserver
         if ($newStatus === 'paid' && $originalStatus !== 'paid') {
             $order->loadMissing('user');
 
-            $order->user->notify(new OrderStatusNotification(
+            OrderNotifier::send($order->user, new OrderStatusNotification(
                 order: $order,
                 type: 'order-paid',
                 subject: "¡Pago confirmado para tu pedido {$order->order_number}!",
@@ -58,7 +70,7 @@ class OrderObserver
         if ($newStatus === 'shipped' && $originalStatus !== 'shipped') {
             $order->loadMissing('user');
 
-            $order->user->notify(new OrderStatusNotification(
+            OrderNotifier::send($order->user, new OrderStatusNotification(
                 order: $order,
                 type: 'order-shipped',
                 subject: "Tu pedido {$order->order_number} está en camino",

@@ -107,7 +107,9 @@ function clearStoredCart() {
 
 // Combina el estado local (optimista) con la respuesta del servidor sin perder
 // operaciones más recientes que aún están en vuelo. Adopta el serverItemId y
-// la cantidad del servidor solo si es mayor que la local.
+// la cantidad del servidor solo si es mayor que la local, pero nunca por encima
+// del stock actual informado por el servidor (evita reinflar cantidades que el
+// backend ya recortó por stock).
 function mergeServerItems(serverItems: ServerCartItem[]): CartItem[] {
   const current = getCartSnapshot();
   const serverByKey = new Map(
@@ -117,9 +119,11 @@ function mergeServerItems(serverItems: ServerCartItem[]): CartItem[] {
     const key = getCartKey(item.product.id, item.variant?.id);
     const server = serverByKey.get(key);
     if (!server) return item;
+    const stock = server.variant ? server.variant.stock : server.product.stock;
+    const preferred = server.quantity > item.quantity ? server.quantity : item.quantity;
     return {
       ...item,
-      quantity: server.quantity > item.quantity ? server.quantity : item.quantity,
+      quantity: Math.min(preferred, stock),
       serverItemId: server.id,
     };
   });
@@ -274,16 +278,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
       item => getCartKey(item.product.id, item.variant?.id) === key
     );
 
+    if (!target) return;
+
+    const availableStock = target.variant ? target.variant.stock : target.product.stock;
+    const nextQuantity = Math.min(quantity, availableStock);
+
     writeCart(current.map(item =>
       getCartKey(item.product.id, item.variant?.id) === key
-        ? { ...item, quantity }
+        ? { ...item, quantity: nextQuantity }
         : item
     ));
 
-    const serverItemId = target?.serverItemId ?? serverIdsByKeyRef.current.get(key);
+    const serverItemId = target.serverItemId ?? serverIdsByKeyRef.current.get(key);
     if (authRef.current && serverItemId) {
       enqueueMutation(() =>
-        updateCartItemApi(serverItemId, quantity)
+        updateCartItemApi(serverItemId, nextQuantity)
           .then(res => {
             rememberServerIds(res.data.items);
             writeCart(mergeServerItems(res.data.items));

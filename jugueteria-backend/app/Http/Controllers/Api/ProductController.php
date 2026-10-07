@@ -20,23 +20,37 @@ class ProductController
             $query->where('is_active', true);
         }
 
-        // Búsqueda por nombre o descripción
+        // Búsqueda por nombre, descripción, slug, marca o categoría
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'LIKE', "%{$search}%")
-                    ->orWhere('description', 'LIKE', "%{$search}%");
+                    ->orWhere('description', 'LIKE', "%{$search}%")
+                    ->orWhere('slug', 'LIKE', "%{$search}%")
+                    ->orWhereHas('category', fn ($c) => $c->where('name', 'LIKE', "%{$search}%"))
+                    ->orWhereHas('brand', fn ($b) => $b->where('name', 'LIKE', "%{$search}%"));
             });
         }
 
-        // Filtro por categoría
+        // Filtro por categoría (id o slug)
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->category_id);
+        }
+        if ($request->filled('category_slug')) {
+            $query->whereHas('category', fn ($c) => $c->where('slug', $request->category_slug));
         }
 
         // Filtro por marca
         if ($request->filled('brand_id')) {
             $query->where('brand_id', $request->brand_id);
+        }
+
+        // Filtro por slugs específicos (ej. sección "Recién Llegados")
+        if ($request->has('slugs')) {
+            $slugs = array_filter((array) $request->query('slugs', []));
+            if ($slugs !== []) {
+                $query->whereIn('slug', $slugs);
+            }
         }
 
         // Filtro por rango de precio
@@ -47,15 +61,40 @@ class ProductController
             $query->where('price', '<=', $request->max_price);
         }
 
+        // Filtro por rango de edad sugerida (el juguete debe cubrir la edad consultada)
+        if ($request->filled('min_age')) {
+            $query->where('age_to', '>=', $request->min_age);
+        }
+        if ($request->filled('max_age')) {
+            $query->where(fn ($q) => $q->where('age_from', '<=', $request->max_age)->orWhereNull('age_from'));
+        }
+
+        // Filtro solo en oferta
+        if ($request->boolean('offer')) {
+            $query->whereNotNull('offer_price')->whereColumn('offer_price', '<', 'price');
+        }
+
+        // Filtro solo productos destacados
+        if ($request->boolean('featured')) {
+            $query->where('is_featured', true);
+        }
+
         // Ordenamiento
         $sortBy = $request->get('sort_by', 'created_at');
         $sortOrder = $request->get('sort_order', 'desc');
 
-        if (in_array($sortBy, ['price', 'name', 'created_at'])) {
+        if ($sortBy === 'discount') {
+            // Porcentaje de descuento, de mayor a menor (los sin oferta van al final)
+            $query->orderByRaw('(price - COALESCE(offer_price, price)) / price DESC');
+        } elseif ($sortBy === 'price') {
+            // Ordena por el precio efectivo (oferta si existe)
+            $query->orderByRaw('COALESCE(offer_price, price) '.($sortOrder === 'asc' ? 'ASC' : 'DESC'));
+        } elseif (in_array($sortBy, ['name', 'created_at'])) {
             $query->orderBy($sortBy, $sortOrder);
         }
 
-        $perPage = $request->get('per_page', 12);
+        $perPage = $request->integer('per_page', 12);
+        $perPage = min(100, max(1, $perPage));
 
         $products = $query->paginate($perPage);
 

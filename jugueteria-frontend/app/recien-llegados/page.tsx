@@ -1,6 +1,6 @@
 import HomeContent from '@/components/HomeContent';
-import { getCategories, getProducts } from '@/services/api';
-import type { Category, Product } from '@/types';
+import { getCategories, getProducts, GRID_PAGE_SIZE } from '@/services/api';
+import type { ProductsResponse, CategoriesResponse } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,24 +49,31 @@ const RECIEN_LLEGADOS_SLUGS = [
   'cometa-acrobatica-aventura',
 ];
 
+const RECIEN_QUERY: Record<string, string[]> = { slugs: RECIEN_LLEGADOS_SLUGS };
+
 export default async function RecienLlegadosPage() {
-  let categories: Category[] = [];
-  let products: Product[] = [];
+  let categories: CategoriesResponse = { success: true, data: [] };
+  let products: ProductsResponse | null = null;
 
   try {
     const [categoriesResponse, productsResponse] = await Promise.all([
       getCategories(),
-      getProducts({ per_page: '1000' }),
+      getProducts({ per_page: GRID_PAGE_SIZE, slugs: RECIEN_LLEGADOS_SLUGS, sort_by: 'name', sort_order: 'asc' }),
     ]);
-    categories = categoriesResponse.data;
-    products = productsResponse.data;
+    categories = categoriesResponse;
+    products = productsResponse;
   } catch (error) {
     console.error('Error al cargar productos/categorías en recién llegados:', error);
   }
 
-  const recienLlegados = products.filter(p => RECIEN_LLEGADOS_SLUGS.includes(p.slug));
-
   return (
-    <HomeContent initialProducts={recienLlegados} categories={categories} heading={NO_BADGE} showSort />
+    <HomeContent
+      initialProducts={products?.data ?? []}
+      initialTotal={products?.pagination.total ?? 0}
+      categories={categories.data}
+      heading={NO_BADGE}
+      showSort
+      queryParams={RECIEN_QUERY}
+    />
   );
 }

@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Support\Shipping;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -19,9 +20,7 @@ class OrderController
         $validated = $request->validated();
         $user = $request->user();
 
-        $shipping = (float) ($validated['shipping'] ?? 0);
-
-        $order = DB::transaction(function () use ($user, $shipping, $validated) {
+        $order = DB::transaction(function () use ($user, $validated) {
             $subtotal = 0;
             $lines = [];
 
@@ -73,6 +72,7 @@ class OrderController
                 ];
             }
 
+            $shipping = Shipping::calculate($subtotal);
             $total = round($subtotal + $shipping, 2);
 
             $order = Order::create([
