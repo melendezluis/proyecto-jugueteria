@@ -10,26 +10,19 @@ import type { Product, ProductVariant } from '@/types';
 export default function ProductDetail() {
   const { slug } = useParams<{ slug: string }>();
 
+  return <ProductDetailBody key={slug} slug={slug} />;
+}
+
+function ProductDetailBody({ slug }: { slug: string }) {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedImage, setSelectedImage] = useState(0);
   const [showStoreInfo, setShowStoreInfo] = useState(false);
   const [quantity, setQuantity] = useState(1);
-  const [lastSlug, setLastSlug] = useState(slug);
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomOrigin, setZoomOrigin] = useState('50% 50%');
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
-
-  // Reinicia la cantidad y el zoom al navegar a otro producto
-  if (lastSlug !== slug) {
-    setLastSlug(slug);
-    setQuantity(1);
-    setSelectedImage(0);
-    setSelectedVariant(null);
-    setIsZoomed(false);
-    setZoomOrigin('50% 50%');
-  }
 
   const { addItem } = useCart();
 
@@ -42,6 +35,7 @@ export default function ProductDetail() {
 
   useEffect(() => {
     let ignore = false;
+
     getProductBySlug(slug)
       .then(res => {
         if (ignore) return;
@@ -110,7 +104,7 @@ export default function ProductDetail() {
   }
 
   const images = product.images.length > 0
-    ? product.images.sort((a, b) => a.position - b.position)
+    ? [...product.images].sort((a, b) => a.position - b.position)
     : null;
 
   const hasOffer = product.offer_price !== null && product.offer_price < product.price;
@@ -128,9 +122,12 @@ export default function ProductDetail() {
   return (
     <div className="min-h-full bg-[#F8F9FA]">
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <nav className="mb-8 text-sm text-gray-500">
-          <Link href="/" className="text-[#219EBC] font-medium hover:text-[#1B7F99] transition-colors">
-            🏠 Inicio
+        <nav className="mb-8 text-sm text-gray-500 flex items-center">
+          <Link href="/" className="inline-flex items-center gap-1.5 leading-none text-[#219EBC] font-medium hover:text-[#1B7F99] transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h3a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h3a1 1 0 001-1V10" />
+            </svg>
+            Inicio
           </Link>
           <span className="mx-2">/</span>
           <span className="text-gray-800">{product.name}</span>
@@ -170,7 +167,7 @@ export default function ProductDetail() {
                   )}
                   {product.is_featured && (
                     <span className="bg-[#FFD23F] text-gray-900 text-sm font-bold px-3 py-1.5 rounded-full shadow-md">
-                      ⭐ Destacado
+                      ⭐ Nuevo
                     </span>
                   )}
                 </div>
@@ -188,12 +185,12 @@ export default function ProductDetail() {
               </div>
             </div>
             {images && images.length > 1 && (
-              <div className="flex gap-3">
+              <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {images.map((img, i) => (
                   <button
                     key={img.id}
                     onClick={() => setSelectedImage(i)}
-                    className={`relative w-20 h-20 rounded-xl overflow-hidden border-2 transition-all bg-[#F3F6FB] flex items-center justify-center text-2xl ${
+                    className={`relative w-20 h-20 shrink-0 rounded-xl overflow-hidden border-2 transition-all bg-[#F3F6FB] flex items-center justify-center text-2xl ${
                       i === selectedImage ? 'border-[#219EBC]' : 'border-transparent opacity-70 hover:opacity-100'
                     }`}
                   >
@@ -219,15 +216,15 @@ export default function ProductDetail() {
                 <span className="bg-[#E7F3FF] text-[#5390D9] px-3 py-1 rounded-full font-medium">{product.category.name}</span>
               )}
             </div>
-            <h1 className="text-4xl font-bold text-gray-800 mb-4">{product.name}</h1>
+            <h1 className="text-2xl md:text-4xl font-bold text-gray-800 mb-4">{product.name}</h1>
             <div className="flex items-baseline gap-3 mb-6">
               {hasOffer ? (
                 <>
-                  <p className="text-4xl font-bold text-pink-600">S/ {displayedPrice.toFixed(2)}</p>
+                  <p className="text-3xl md:text-4xl font-bold text-pink-600">S/ {displayedPrice.toFixed(2)}</p>
                   <p className="text-2xl text-gray-400 line-through">S/ {comparedPrice.toFixed(2)}</p>
                 </>
               ) : (
-                <p className="text-4xl font-bold text-gray-900">S/ {displayedPrice.toFixed(2)}</p>
+                <p className="text-3xl md:text-4xl font-bold text-gray-900">S/ {displayedPrice.toFixed(2)}</p>
               )}
             </div>
 
@@ -391,7 +388,7 @@ export default function ProductDetail() {
             <button
               onClick={() => addItem(product, quantity, selectedVariant ?? undefined)}
               disabled={!canAdd}
-              className="w-full inline-flex items-center justify-center gap-2 bg-[#C4785C] hover:bg-[#B56A4E] disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-5 rounded-2xl transition-all text-xl active:scale-95 shadow-md shadow-[#C4785C]/30 btn-shimmer"
+              className="w-full inline-flex items-center justify-center gap-2 bg-white border-2 border-[#5EA57E] text-[#5EA57E] hover:bg-[#5EA57E] hover:text-white active:bg-[#4A8A67] disabled:bg-gray-100 disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-gray-100 disabled:cursor-not-allowed font-semibold py-5 rounded-2xl transition-all text-xl active:scale-95 shadow-sm shadow-[#5EA57E]/20 btn-shimmer"
             >
               {effectiveStock <= 0 ? (
                 'Producto agotado'

@@ -11,6 +11,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 class Product extends Model implements HasMedia
 {
     use HasFactory, InteractsWithMedia;
+
     protected $fillable = [
         'name',                  // Nombre del juguete
         'slug',                  // URL amigable
@@ -30,7 +31,7 @@ class Product extends Model implements HasMedia
         'brand_id',              // Relación con marca
     ];
 
-    //Relaciones
+    // Relaciones
     public function category()
     {
         return $this->belongsTo(Category::class);
@@ -48,7 +49,9 @@ class Product extends Model implements HasMedia
 
     public function images()
     {
-        return $this->hasMany(ProductImage::class);
+        return $this->hasMany(ProductImage::class)
+            ->orderByDesc('is_main')
+            ->orderBy('position');
     }
 
     // Generar slug automáticamente
@@ -58,6 +61,10 @@ class Product extends Model implements HasMedia
             if (empty($product->slug)) {
                 $product->slug = Str::slug($product->name);
             }
+        });
+
+        static::deleting(function ($product) {
+            $product->images->each->delete();
         });
     }
 

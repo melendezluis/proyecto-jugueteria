@@ -15,6 +15,14 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: 'bg-red-100 text-red-600',
 };
 
+function ArrowLeftIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+    </svg>
+  );
+}
+
 export default function OrdersPage() {
   const router = useRouter();
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -65,8 +73,9 @@ export default function OrdersPage() {
           <h1 className="text-4xl font-bold text-gray-800">Mis pedidos</h1>
           <Link
             href="/"
-            className="text-pink-600 hover:text-pink-700 font-medium transition-colors"
+            className="inline-flex items-center gap-2 border-2 border-pink-200 bg-pink-50 hover:bg-pink-100 text-pink-600 hover:text-pink-700 font-semibold px-5 py-2.5 rounded-full transition-all active:scale-[0.98]"
           >
+            <ArrowLeftIcon className="w-4 h-4" />
             Seguir comprando
           </Link>
         </div>

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class Category extends Model
@@ -34,5 +35,34 @@ class Category extends Model
                 $category->slug = Str::slug($category->name);
             }
         });
+
+        static::deleted(function ($category) {
+            $category->deleteImageFile();
+        });
+
+        static::updated(function ($category) {
+            if ($category->wasChanged('image')) {
+                $category->deleteImageFile($category->getOriginal('image'));
+            }
+        });
+    }
+
+    public function deleteImageFile(?string $path = null): void
+    {
+        $path = $path ?? $this->image;
+
+        if (blank($path) || str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return;
+        }
+
+        $relative = str_starts_with($path, '/storage/')
+            ? substr($path, strlen('/storage/'))
+            : ltrim($path, '/');
+
+        if ($relative === '' || str_contains($relative, '..')) {
+            return;
+        }
+
+        Storage::disk('public')->delete($relative);
     }
 }

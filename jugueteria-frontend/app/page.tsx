@@ -31,10 +31,10 @@ export default async function Home() {
     )
     .slice(0, 8);
 
-  const featured = products.filter(p => p.is_featured).slice(0, 10);
+  const featured = products.filter(p => p.is_featured);
 
   return (
-    <HomeContent initialProducts={products} categories={categories}>
+    <HomeContent initialProducts={products} categories={categories} showSort>
       <HeroCarousel />
       <OffersSection offers={offers} />
       <FeaturedProducts products={featured} />

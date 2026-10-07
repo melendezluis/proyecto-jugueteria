@@ -98,6 +98,14 @@ function BagIcon({ className }: IconProps) {
   );
 }
 
+function ArrowLeftIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+    </svg>
+  );
+}
+
 function LockIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={className}>
@@ -196,7 +204,7 @@ function ErrorText({ message }: { message?: string }) {
 
 function CheckoutForm({ user }: { user: CheckoutUser }) {
   const router = useRouter();
-  const { items, clearCart, totalPrice } = useCart();
+  const { items, totalPrice } = useCart();
 
   const [fullname, setFullname] = useState(user.name);
   const [phone, setPhone] = useState('');
@@ -216,6 +224,25 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
     e.preventDefault();
     setGeneralError('');
     setFieldErrors({});
+
+    const errors: Record<string, string> = {};
+    if (fullname.trim().length < 3) {
+      errors.shipping_fullname = 'Ingresa tu nombre completo.';
+    }
+    if (phone.trim() && !/^9\d{8}$/.test(phone.trim())) {
+      errors.shipping_phone = 'Ingresa un teléfono válido (9 dígitos, empieza con 9).';
+    }
+    if (city.trim().length < 3) {
+      errors.shipping_city = 'Ingresa tu ciudad.';
+    }
+    if (address.trim().length < 5) {
+      errors.shipping_address = 'Ingresa tu dirección completa (mínimo 5 caracteres).';
+    }
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -232,8 +259,6 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
           variant_id: item.variant?.id,
         })),
       });
-
-      clearCart();
 
       try {
         const preference = await createPreference(res.data.id);
@@ -324,9 +349,10 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
                     onChange={e => setPhone(e.target.value)}
                     placeholder="Opcional"
                     autoComplete="tel"
-                    className={inputWithIconClass()}
+                    className={inputWithIconClass(!!fieldErrors.shipping_phone)}
                   />
                 </div>
+                <ErrorText message={fieldErrors.shipping_phone} />
               </div>
 
               <div>
@@ -452,7 +478,7 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full mt-6 inline-flex items-center justify-center gap-2.5 bg-gradient-to-r from-[#C4785C] to-[#A85D42] hover:from-[#B56A4E] hover:to-[#9A5238] disabled:from-gray-300 disabled:to-gray-300 text-white font-bold py-4 rounded-2xl transition-all active:scale-[0.98] text-lg shadow-lg shadow-orange-200 disabled:shadow-none btn-shimmer"
+            className="w-full mt-6 inline-flex items-center justify-center gap-2.5 bg-gradient-to-r from-[#5EA57E] to-[#4E8A68] hover:from-[#4E8A68] hover:to-[#3F7357] disabled:from-gray-300 disabled:to-gray-300 text-white font-bold py-4 rounded-2xl transition-all active:scale-[0.98] text-lg shadow-lg shadow-green-200 disabled:shadow-none border-2 border-[#3F7357] btn-shimmer"
           >
             {submitting ? (
               <>
@@ -478,9 +504,10 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
 
         <Link
           href="/"
-          className="block text-center text-gray-500 hover:text-[#287FF0] text-sm font-medium mt-5 transition-colors"
+          className="mt-5 w-full inline-flex items-center justify-center gap-2 border-2 border-[#287FF0]/30 bg-[#287FF0]/5 hover:bg-[#287FF0]/10 text-[#1B66D0] hover:text-[#1558B8] font-semibold py-3 rounded-2xl transition-all active:scale-[0.98] text-sm"
         >
-          ← Seguir comprando
+          <ArrowLeftIcon className="w-4 h-4" />
+          Seguir comprando
         </Link>
       </aside>
     </form>
@@ -513,8 +540,13 @@ export default function CheckoutPage() {
   return (
     <div className="bg-gray-50 min-h-full">
       <div className="max-w-7xl mx-auto px-6 py-10">
-        <nav className="mb-5 text-sm text-gray-400">
-          <Link href="/" className="hover:text-[#287FF0] transition-colors">Inicio</Link>
+        <nav className="mb-5 text-sm text-gray-400 flex items-center">
+          <Link href="/" className="inline-flex items-center gap-1.5 leading-none hover:text-[#287FF0] transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h3a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h3a1 1 0 001-1V10" />
+            </svg>
+            Inicio
+          </Link>
           <span className="mx-2">/</span>
           <span className="text-gray-700 font-medium">Checkout</span>
         </nav>

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useSyncExternalStore, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginApi, registerApi, logoutApi, getUserApi } from '@/services/api';
 
@@ -21,6 +21,10 @@ interface AuthContextType {
   isAuthenticated: boolean;
 }
 
+const LOGOUT_EVENT = 'elgato-auth-logout';
+
+const emptySubscribe = () => () => {};
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -29,19 +33,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('token');
   });
-  const [loading, setLoading] = useState(() => !!token);
   const router = useRouter();
 
+  // Snapshot del cliente antes/después de la hidratación. Durante SSR y el primer
+  // render del cliente devuelve false, así servidor y cliente pintan el mismo
+  // estado y no hay errores de hidratación por leer localStorage.
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+
   useEffect(() => {
-    if (token) {
-      getUserApi()
-        .then(res => setUser(res.data))
-        .catch(() => {
-          localStorage.removeItem('token');
-          setToken(null);
-        })
-        .finally(() => setLoading(false));
-    }
+    if (!token) return;
+    getUserApi()
+      .then(res => setUser(res.data))
+      .catch(() => {
+        localStorage.removeItem('token');
+        setToken(null);
+      });
   }, [token]);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -65,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
+    window.dispatchEvent(new Event(LOGOUT_EVENT));
     router.push('/login');
   }, [router]);
 
@@ -72,8 +83,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(updated);
   }, []);
 
+  // Mientras no se haya montado (o mientras se resuelve la sesión) los guards
+  // de las páginas (ej. `if (!authLoading && !isAuthenticated) redirect`) deben
+  // bloquearse para no redirigir a /login con un token válido en almacenamiento.
+  const loading = !mounted || (token !== null && user === null);
+  const isAuthenticated = mounted && !!(token || user);
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, updateUser, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, updateUser, isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   );

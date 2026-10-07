@@ -12,7 +12,7 @@ function formatTime(value: number): string {
 function getTimeLeft(): { hours: number; minutes: number; seconds: number } | null {
   const now = new Date();
   const end = new Date();
-  end.setHours(23, 59, 59, 999);
+  end.setHours(83, 59, 59, 999);
   const diff = end.getTime() - now.getTime();
   if (diff <= 0) return null;
   return {
@@ -49,7 +49,7 @@ function OffersContent({ offers }: { offers: Product[] }) {
     <section id="ofertas" aria-label="Ofertas de la semana">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
-          <h2 className="text-4xl font-bold text-[#2B2D42] font-fredoka tracking-wide">
+          <h2 className="text-2xl md:text-4xl font-bold text-[#2B2D42] font-fredoka tracking-wide">
             Ofertas de la semana
           </h2>
           <span className="bg-pink-500 text-white text-sm font-bold px-3 py-1.5 rounded-full animate-pulse">
@@ -58,8 +58,10 @@ function OffersContent({ offers }: { offers: Product[] }) {
         </div>
 
         <div className="flex items-center gap-3">
-          <p className="text-sm text-gray-500 font-semibold hidden sm:block">Termina en:</p>
-          <div className="flex items-center gap-1.5" aria-live="polite">
+<p className="text-sm text-[#2B2D42] font-bold uppercase tracking-wide leading-none hidden sm:block">
+          Termina en:
+        </p>
+        <div className="flex items-center gap-2" aria-live="polite">
             <TimeBox label="hrs" value={timeLeft ? formatTime(timeLeft.hours) : '--'} />
             <span className="text-xl font-bold text-[#2B2D42]">:</span>
             <TimeBox label="min" value={timeLeft ? formatTime(timeLeft.minutes) : '--'} />
@@ -82,17 +84,39 @@ function OffersContent({ offers }: { offers: Product[] }) {
         <button
           onClick={() => scroll(-1)}
           aria-label="Desplazar ofertas a la izquierda"
-          className="absolute -left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white shadow-lg border border-gray-100 text-[#5390D9] text-2xl font-bold flex items-center justify-center hover:bg-[#E7F3FF] transition-colors z-10"
+          className="hidden md:flex absolute -left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white shadow-lg border border-gray-100 text-[#5390D9] text-2xl font-bold items-center justify-center hover:bg-[#E7F3FF] transition-colors z-10"
         >
           ‹
         </button>
         <button
           onClick={() => scroll(1)}
           aria-label="Desplazar ofertas a la derecha"
-          className="absolute -right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white shadow-lg border border-gray-100 text-[#5390D9] text-2xl font-bold flex items-center justify-center hover:bg-[#E7F3FF] transition-colors z-10"
+          className="hidden md:flex absolute -right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white shadow-lg border border-gray-100 text-[#5390D9] text-2xl font-bold items-center justify-center hover:bg-[#E7F3FF] transition-colors z-10"
         >
           ›
         </button>
+      </div>
+
+      <div className="mt-8 text-center">
+        <Link
+          href="/descuentos"
+          className="group inline-flex items-center gap-3 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold text-base sm:text-lg px-10 py-4 rounded-full shadow-lg shadow-pink-500/30 hover:shadow-xl transition-all hover:-translate-y-0.5 active:scale-95 btn-shimmer"
+        >
+          Ver todas las ofertas
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.25}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M5 12h14" />
+            <path d="m12 5 7 7-7 7" />
+          </svg>
+        </Link>
       </div>
     </section>
   );
@@ -118,8 +142,8 @@ function OfferCard({ product }: { product: Product }) {
         <div className="h-44 bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-7xl group-hover:scale-105 transition-transform">
           🧸
         </div>
-        <span className="absolute top-3 left-3 bg-pink-500 text-white text-sm font-bold px-3 py-1 rounded-full shadow">
-          -{discount}%
+        <span className="absolute top-3 -left-10 z-10 -rotate-45 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-[11px] font-extrabold uppercase tracking-widest px-12 py-1.5 shadow-md">
+          -{discount}% Oferta
         </span>
       </Link>
       <div className="p-5 flex flex-col flex-1">
@@ -133,15 +157,15 @@ function OfferCard({ product }: { product: Product }) {
             <p className="text-2xl font-bold text-pink-600">
               S/ {product.offer_price!.toFixed(2)}
             </p>
-            <p className="text-sm text-gray-400 line-through">
+            <p className="text-sm text-rose-400 line-through font-semibold">
               S/ {product.price.toFixed(2)}
             </p>
           </div>
           <button
             onClick={() => addItem(product)}
-            className="w-full inline-flex items-center justify-center gap-2 bg-[#C4785C] hover:bg-[#B56A4E] text-white font-semibold py-2.5 rounded-2xl transition-all active:scale-95 shadow-md shadow-[#C4785C]/30 btn-shimmer"
+            className="w-full inline-flex items-center justify-center gap-3 bg-white border-2 border-[#5EA57E] text-[#5EA57E] hover:bg-[#5EA57E] hover:text-white active:bg-[#4A8A67] font-semibold py-2.5 rounded-2xl transition-all active:scale-95 shadow-sm shadow-[#5EA57E]/20 btn-shimmer"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
             </svg>
             Agregar al carrito

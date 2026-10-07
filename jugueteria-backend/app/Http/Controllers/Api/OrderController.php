@@ -20,59 +20,61 @@ class OrderController
         $user = $request->user();
 
         $shipping = (float) ($validated['shipping'] ?? 0);
-        $subtotal = 0;
-        $lines = [];
 
-        foreach ($validated['items'] as $item) {
-            $product = Product::find($item['product_id']);
+        $order = DB::transaction(function () use ($user, $shipping, $validated) {
+            $subtotal = 0;
+            $lines = [];
 
-            if (! $product || ! $product->is_active) {
-                throw ValidationException::withMessages([
-                    'items' => ["El producto con ID {$item['product_id']} no está disponible."],
-                ]);
-            }
+            foreach ($validated['items'] as $item) {
+                $product = Product::where('id', $item['product_id'])->lockForUpdate()->first();
 
-            $unitPrice = $product->offer_price ?? $product->price;
-            $variant = null;
-
-            if (! empty($item['variant_id'])) {
-                $variant = ProductVariant::where('id', $item['variant_id'])
-                    ->where('product_id', $product->id)
-                    ->first();
-
-                if (! $variant || ! $variant->is_active) {
+                if (! $product || ! $product->is_active) {
                     throw ValidationException::withMessages([
-                        'items' => ["La variante del producto {$product->name} no está disponible."],
+                        'items' => ["El producto con ID {$item['product_id']} no está disponible."],
                     ]);
                 }
-                if ($variant->stock < $item['quantity']) {
+
+                $unitPrice = $product->offer_price ?? $product->price;
+                $variant = null;
+
+                if (! empty($item['variant_id'])) {
+                    $variant = ProductVariant::where('id', $item['variant_id'])
+                        ->where('product_id', $product->id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (! $variant || ! $variant->is_active) {
+                        throw ValidationException::withMessages([
+                            'items' => ["La variante del producto {$product->name} no está disponible."],
+                        ]);
+                    }
+                    if ($variant->stock < $item['quantity']) {
+                        throw ValidationException::withMessages([
+                            'items' => ["Stock insuficiente para la variante de {$product->name}."],
+                        ]);
+                    }
+                    $unitPrice += (float) $variant->price_extra;
+                } elseif ($product->stock < $item['quantity']) {
                     throw ValidationException::withMessages([
-                        'items' => ["Stock insuficiente para la variante de {$product->name}."],
+                        'items' => ["Stock insuficiente para {$product->name} (disponible: {$product->stock})."],
                     ]);
                 }
-                $unitPrice += (float) $variant->price_extra;
-            } elseif ($product->stock < $item['quantity']) {
-                throw ValidationException::withMessages([
-                    'items' => ["Stock insuficiente para {$product->name} (disponible: {$product->stock})."],
-                ]);
+
+                $quantity = $item['quantity'];
+                $lineTotal = round($unitPrice * $quantity, 2);
+                $subtotal += $lineTotal;
+
+                $lines[] = [
+                    'product' => $product,
+                    'variant' => $variant,
+                    'quantity' => $quantity,
+                    'unit_price' => $unitPrice,
+                    'total' => $lineTotal,
+                ];
             }
 
-            $quantity = $item['quantity'];
-            $lineTotal = round($unitPrice * $quantity, 2);
-            $subtotal += $lineTotal;
+            $total = round($subtotal + $shipping, 2);
 
-            $lines[] = [
-                'product' => $product,
-                'variant' => $variant,
-                'quantity' => $quantity,
-                'unit_price' => $unitPrice,
-                'total' => $lineTotal,
-            ];
-        }
-
-        $total = round($subtotal + $shipping, 2);
-
-        $order = DB::transaction(function () use ($user, $subtotal, $shipping, $total, $lines, $validated) {
             $order = Order::create([
                 'user_id' => $user->id,
                 'subtotal' => $subtotal,

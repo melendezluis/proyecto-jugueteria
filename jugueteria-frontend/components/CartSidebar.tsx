@@ -33,6 +33,14 @@ function TrashIcon({ className }: IconProps) {
   );
 }
 
+function ArrowLeftIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+    </svg>
+  );
+}
+
 function LockIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={className}>
@@ -139,6 +147,7 @@ export default function CartSidebar() {
                         src={getImageUrl(thumb) ?? undefined}
                         alt={item.product.name}
                         className="absolute inset-0 w-full h-full object-cover"
+                        onError={e => { e.currentTarget.style.display = 'none'; }}
                       />
                     )}
                     <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1 bg-[#FFD23F] text-gray-900 text-[11px] font-extrabold rounded-full flex items-center justify-center border-2 border-white">
@@ -218,7 +227,7 @@ export default function CartSidebar() {
             <Link
               href="/checkout"
               onClick={closeCart}
-              className="mt-1 w-full inline-flex items-center justify-center gap-2.5 bg-gradient-to-r from-[#C4785C] to-[#A85D42] hover:from-[#B56A4E] hover:to-[#9A5238] text-white font-bold py-4 rounded-2xl transition-all active:scale-[0.98] text-lg shadow-lg shadow-orange-200 btn-shimmer"
+              className="mt-1 w-full inline-flex items-center justify-center gap-2.5 bg-gradient-to-r from-[#5EA57E] to-[#4E8A68] hover:from-[#4E8A68] hover:to-[#3F7357] text-white font-bold py-4 rounded-2xl transition-all active:scale-[0.98] text-lg shadow-lg shadow-green-200 border-2 border-[#3F7357] btn-shimmer"
             >
               <LockIcon className="w-5 h-5" />
               Ir a pagar
@@ -227,9 +236,10 @@ export default function CartSidebar() {
             <Link
               href="/"
               onClick={closeCart}
-              className="block text-center text-gray-500 hover:text-[#C4785C] text-sm font-medium pt-1 transition-colors"
+              className="w-full inline-flex items-center justify-center gap-2 border-2 border-[#C4785C]/30 bg-[#C4785C]/5 hover:bg-[#C4785C]/10 text-[#A85D42] hover:text-[#9A5238] font-semibold py-3 rounded-2xl transition-all active:scale-[0.98] mt-1 text-sm"
             >
-              ← Seguir comprando
+              <ArrowLeftIcon className="w-4 h-4" />
+              Seguir comprando
             </Link>
           </div>
         )}

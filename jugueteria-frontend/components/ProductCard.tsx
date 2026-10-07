@@ -17,7 +17,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     ?? null;
 
   return (
-    <div className="bg-[#E7EBFE] rounded-3xl shadow hover:shadow-xl transition-all duration-300 overflow-hidden group flex flex-col">
+    <div className="h-full bg-[#E7EBFE] rounded-3xl shadow hover:shadow-xl transition-all duration-300 overflow-hidden group flex flex-col">
       <Link href={`/products/${product.slug}`} className="block">
         <div className="h-64 bg-gradient-to-br from-sky-400 to-blue-600 relative overflow-hidden">
           <span className="absolute inset-0 flex items-center justify-center text-8xl select-none">🧸</span>
@@ -26,6 +26,7 @@ export default function ProductCard({ product }: ProductCardProps) {
               src={getImageUrl(mainImage) ?? undefined}
               alt={product.name}
               className="relative w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+              onError={e => { e.currentTarget.style.display = 'none'; }}
             />
           )}
           {hasOffer && (
@@ -35,7 +36,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           )}
           {product.is_featured && !hasOffer && (
             <span className="absolute top-3 left-3 z-10 bg-[#FFD23F] text-gray-900 text-sm font-bold px-3 py-1 rounded-full">
-              Destacado
+              Nuevo
             </span>
           )}
         </div>
@@ -68,9 +69,9 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
           <button
             onClick={() => addItem(product)}
-            className="w-full inline-flex items-center justify-center gap-2 bg-[#C4785C] hover:bg-[#B56A4E] text-white font-semibold py-4 rounded-2xl transition-all active:scale-95 shadow-md shadow-[#C4785C]/30 btn-shimmer"
+            className="w-full h-14 inline-flex items-center justify-center gap-2 whitespace-nowrap bg-white border-2 border-[#5EA57E] text-[#5EA57E] hover:bg-[#5EA57E] hover:text-white active:bg-[#4A8A67] font-semibold py-4 rounded-2xl transition-all active:scale-95 shadow-sm shadow-[#5EA57E]/20 btn-shimmer"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
             </svg>
             Agregar al carrito

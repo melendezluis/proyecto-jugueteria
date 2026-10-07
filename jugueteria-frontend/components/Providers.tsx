@@ -12,7 +12,7 @@ export default function Providers({ children }: { children: ReactNode }) {
     <AuthProvider>
       <CartProvider>
         <Header />
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 pt-24">{children}</main>
         <Footer />
         <CartSidebar />
       </CartProvider>

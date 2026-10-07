@@ -9,12 +9,26 @@ import type {
   ProductVariant,
 } from '@/types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const ENV_API_URL = process.env.NEXT_PUBLIC_API_URL || '/api-proxy';
+
+function isRelativeUrl(url: string): boolean {
+  return url.startsWith('/');
+}
+
+function getApiBase(): string {
+  if (!isRelativeUrl(ENV_API_URL)) return ENV_API_URL;
+  return typeof window === 'undefined' ? 'http://localhost:8000/api' : ENV_API_URL;
+}
+
+function getAssetsBase(): string {
+  if (isRelativeUrl(ENV_API_URL)) return '';
+  return ENV_API_URL.replace(/\/api\/?$/, '');
+}
 
 export function getImageUrl(path: string | null | undefined): string | null {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
-  const base = API_URL.replace(/\/api\/?$/, '');
+  const base = getAssetsBase();
   return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
 }
 
@@ -22,6 +36,8 @@ function getToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('token');
 }
+
+const REQUEST_TIMEOUT_MS = 20000;
 
 async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const token = getToken();
@@ -31,10 +47,36 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_URL}${endpoint}`, {
-    headers: { ...headers, ...options?.headers as Record<string, string> },
-    ...options,
-  });
+  const controller = new AbortController();
+  const externalSignal = options?.signal;
+  const onExternalAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort();
+    } else {
+      externalSignal.addEventListener('abort', onExternalAbort);
+    }
+  }
+
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(`${getApiBase()}${endpoint}`, {
+      ...options,
+      headers: { ...headers, ...options?.headers as Record<string, string> },
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (controller.signal.aborted && !externalSignal?.aborted) {
+      throw new Error('El servidor tardó demasiado en responder. Inténtalo de nuevo.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+    externalSignal?.removeEventListener('abort', onExternalAbort);
+  }
+
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const error = new Error(body.message || `API error: ${res.status}`) as Error & { errors?: Record<string, string[]>; status?: number };

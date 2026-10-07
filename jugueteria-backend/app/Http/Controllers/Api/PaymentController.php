@@ -166,22 +166,26 @@ class PaymentController
     {
         $secret = config('mercadopago.webhook_secret');
 
-        if ($secret) {
-            try {
-                WebhookSignatureValidator::validate(
-                    $request->header('x-signature'),
-                    $request->header('x-request-id'),
-                    $request->query('data.id') ?: $request->input('data.id'),
-                    $secret,
-                    300
-                );
-            } catch (\Exception $e) {
-                Log::warning('Mercado Pago: webhook con firma inválida.', [
-                    'error' => $e->getMessage(),
-                ]);
+        if (! $secret) {
+            Log::warning('Mercado Pago: webhook recibido sin webhook_secret configurado; se rechaza.');
 
-                return response()->json(['success' => false], 401);
-            }
+            return response()->json(['success' => false], 503);
+        }
+
+        try {
+            WebhookSignatureValidator::validate(
+                $request->header('x-signature'),
+                $request->header('x-request-id'),
+                $request->query('data.id') ?: $request->input('data.id'),
+                $secret,
+                300
+            );
+        } catch (\Exception $e) {
+            Log::warning('Mercado Pago: webhook con firma inválida.', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['success' => false], 401);
         }
 
         $paymentId = $request->input('data.id')
@@ -205,7 +209,7 @@ class PaymentController
             if ($payment->external_reference) {
                 $order = Order::where('order_number', $payment->external_reference)->first();
 
-                if ($order) {
+                if ($order && $this->paymentMatchesOrder($payment, $order)) {
                     $this->syncOrderWithPayment($order, $payment);
                 }
             }
@@ -257,5 +261,15 @@ class PaymentController
                 'payment_method' => $payment->payment_method_id,
             ]);
         }
+    }
+
+    /**
+     * Verifica que el monto del pago coincida con el total de la orden.
+     */
+    private function paymentMatchesOrder($payment, Order $order): bool
+    {
+        $amount = (float) ($payment->transaction_amount ?? 0);
+
+        return abs($amount - (float) $order->total) < 0.01;
     }
 }

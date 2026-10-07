@@ -163,18 +163,27 @@ export default function PerfilPage() {
       <div className="max-w-5xl mx-auto">
         {/* ENCABEZADO */}
         <div className="text-center mb-10">
-          <div className="relative w-14 h-14 mx-auto rounded-full overflow-hidden border-2 border-black bg-white flex-shrink-0 mb-3">
-            <Image
-              src="/images/gato20.png"
-              alt="Logo jugueteria el gato"
-              fill
-              className="object-contain rounded-full"
-              sizes="56px"
-            />
-          </div>
-          <h1 className="font-kaushan text-3xl text-[#2B2D42]">Mi perfil</h1>
-          <p className="text-[#2B2D42]/70 mt-2">Administra tus datos y tu contraseña.</p>
-        </div>
+  {/* Contenedor Flex para alinear el ícono y el título */}
+  <div className="flex items-center justify-center gap-3 mb-2">
+    
+    {/* Ícono del Gato (sin mx-auto, sin mb-3) */}
+    <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-black bg-white flex-shrink-0">
+      <Image
+        src="/images/gato20.png"
+        alt="Logo jugueteria el gato"
+        fill
+        className="object-contain rounded-full"
+        sizes="56px"
+      />
+    </div>
+
+    {/* Título */}
+    <h1 className="font-kaushan text-3xl text-[#2B2D42]">Mi perfil</h1>
+  </div>
+
+  {/* Subtítulo (queda debajo de todo el bloque centrado) */}
+  <p className="text-[#2B2D42]/70 mt-2">Administra tus datos y tu contraseña.</p>
+</div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
           {/* TARJETA: DATOS PERSONALES */}
@@ -287,11 +296,15 @@ export default function PerfilPage() {
           </form>
         </div>
 
-        <p className="text-center mt-8 text-sm text-[#2B2D42]/70">
-          <Link href="/" className="text-[#219EBC] hover:text-[#1B7F99] font-medium">
-            ← Volver a la tienda
+        <div className="text-center mt-10">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-3 group bg-[#5EA57E] hover:bg-[#7CBF9C] text-white font-semibold py-3 px-8 rounded-full shadow-md hover:shadow-lg transition-all duration-300"
+          >
+            <span className="transition-transform duration-300 group-hover:-translate-x-1">←</span>
+            Volver a la tienda
           </Link>
-        </p>
+        </div>
       </div>
     </div>
   );

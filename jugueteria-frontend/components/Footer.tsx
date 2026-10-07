@@ -38,7 +38,7 @@ export default function Footer() {
         {/* Marca y redes sociales */}
         <div>
           <div className="flex items-center gap-3 mb-4">
-            <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-[#FFD23F] bg-white flex-shrink-0">
+            <div className="relative w-12 h-12 rounded-full overflow-hidden bg-white flex-shrink-0">
               <Image
                 src="/images/gato20.png"
                 alt="Juguetería El Gato"

@@ -6,6 +6,7 @@ use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
+use App\Support\PublicStorage;
 use Illuminate\Http\Request;
 
 class ProductController
@@ -15,16 +16,16 @@ class ProductController
         $query = Product::with(['category', 'brand', 'variants', 'images']);
 
         // Filtro solo mostrar activos (a menos que se pida explícitamente todos)
-        if (!$request->boolean('all')) {
+        if (! $request->boolean('all')) {
             $query->where('is_active', true);
         }
 
         // Búsqueda por nombre o descripción
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'LIKE', "%{$search}%")
-                  ->orWhere('description', 'LIKE', "%{$search}%");
+                    ->orWhere('description', 'LIKE', "%{$search}%");
             });
         }
 
@@ -66,53 +67,129 @@ class ProductController
                 'last_page' => $products->lastPage(),
                 'per_page' => (int) $products->perPage(),
                 'total' => $products->total(),
-            ]
+            ],
         ]);
     }
 
     public function show($id)
     {
         $product = Product::with(['category', 'brand', 'variants', 'images'])
-                         ->findOrFail($id);
+            ->findOrFail($id);
 
         return response()->json([
             'success' => true,
-            'data' => new ProductResource($product)
+            'data' => new ProductResource($product),
         ]);
     }
 
     public function store(StoreProductRequest $request)
     {
-        $product = Product::create($request->validated());
+        $product = Product::create(
+            $request->safe()->except(['images', 'image_alts', 'variants'])
+        );
+
+        $this->syncImages($product, $request);
+        $this->syncVariants($product, $request);
 
         return response()->json([
             'success' => true,
             'message' => 'Producto creado exitosamente.',
-            'data' => new ProductResource($product->load(['category', 'brand']))
+            'data' => new ProductResource($product->load(['category', 'brand', 'images', 'variants'])),
         ], 201);
     }
 
     public function update(UpdateProductRequest $request, $id)
     {
         $product = Product::findOrFail($id);
-        $product->update($request->validated());
+
+        $product->update(
+            $request->safe()->except(['images', 'image_alts', 'variants'])
+        );
+
+        if ($request->has('images')) {
+            $this->syncImages($product, $request, replace: true);
+        }
+
+        if ($request->has('variants')) {
+            $this->syncVariants($product, $request, replace: true);
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Producto actualizado exitosamente.',
-            'data' => new ProductResource($product->load(['category', 'brand']))
+            'data' => new ProductResource($product->load(['category', 'brand', 'images', 'variants'])),
         ]);
+    }
+
+    /**
+     * Guarda las imágenes subidas en `products/` y sus filas en `product_images`.
+     * Con `replace` elimina las imágenes anteriores (el modelo borra el archivo en disco).
+     */
+    private function syncImages(Product $product, Request $request, bool $replace = false): void
+    {
+        if ($replace) {
+            foreach ($product->images()->get() as $image) {
+                $image->delete();
+            }
+        }
+
+        $files = $request->file('images');
+        $files = is_array($files) ? array_values($files) : [];
+
+        if ($files === []) {
+            return;
+        }
+
+        $alts = $request->input('image_alts');
+        $alts = is_array($alts) ? array_values($alts) : [];
+
+        foreach ($files as $index => $file) {
+            $product->images()->create([
+                'image_path' => PublicStorage::store($file, 'products'),
+                'alt_text' => $alts[$index] ?? null,
+                'position' => $index + 1,
+                'is_main' => $index === 0,
+            ]);
+        }
+    }
+
+    /**
+     * Con `replace` reemplaza todas las variantes por las enviadas en `variants`.
+     */
+    private function syncVariants(Product $product, Request $request, bool $replace = false): void
+    {
+        if ($replace) {
+            $product->variants()->delete();
+        }
+
+        $variants = $request->input('variants');
+        $variants = is_array($variants) ? array_values($variants) : [];
+
+        if ($variants === []) {
+            return;
+        }
+
+        foreach ($variants as $variant) {
+            $product->variants()->create([
+                'sku' => $variant['sku'] ?? null,
+                'color' => $variant['color'] ?? null,
+                'size' => $variant['size'] ?? null,
+                'stock' => (int) ($variant['stock'] ?? 0),
+                'price_extra' => (float) ($variant['price_extra'] ?? 0),
+                'is_active' => filter_var($variant['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? true,
+            ]);
+        }
     }
 
     public function bySlug($slug)
     {
         $product = Product::with(['category', 'brand', 'variants', 'images'])
-                         ->where('slug', $slug)
-                         ->firstOrFail();
+            ->where('slug', $slug)
+            ->firstOrFail();
 
         return response()->json([
             'success' => true,
-            'data' => new ProductResource($product)
+            'data' => new ProductResource($product),
         ]);
     }
 
@@ -123,7 +200,7 @@ class ProductController
 
         return response()->json([
             'success' => true,
-            'message' => 'Producto eliminado exitosamente.'
+            'message' => 'Producto eliminado exitosamente.',
         ]);
     }
 }
