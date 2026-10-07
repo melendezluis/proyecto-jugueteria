@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Resources\BrandResource;
 use App\Models\Brand;
+use App\Support\PublicStorage;
 use Illuminate\Http\Request;
 
 class BrandController
@@ -12,7 +13,7 @@ class BrandController
     {
         $query = Brand::withCount('products');
 
-        if (!$request->boolean('all')) {
+        if (! $request->boolean('all')) {
             $query->where('is_active', true);
         }
 
@@ -20,7 +21,7 @@ class BrandController
 
         return response()->json([
             'success' => true,
-            'data' => BrandResource::collection($brands)
+            'data' => BrandResource::collection($brands),
         ]);
     }
 
@@ -30,27 +31,26 @@ class BrandController
 
         return response()->json([
             'success' => true,
-            'data' => new BrandResource($brand)
+            'data' => new BrandResource($brand),
         ]);
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:brands,slug',
-            'description' => 'nullable|string',
-            'logo' => 'nullable|string|max:255',
-            'website' => 'nullable|string|max:255',
-            'is_active' => 'boolean',
-        ]);
+        $validated = $request->validate($this->rules($request));
+
+        if ($request->hasFile('logo')) {
+            $validated['logo'] = PublicStorage::store($request->file('logo'), 'brands');
+        } elseif (array_key_exists('logo', $validated)) {
+            $validated['logo'] = PublicStorage::normalize($validated['logo']);
+        }
 
         $brand = Brand::create($validated);
 
         return response()->json([
             'success' => true,
             'message' => 'Marca creada exitosamente.',
-            'data' => new BrandResource($brand)
+            'data' => new BrandResource($brand),
         ], 201);
     }
 
@@ -58,22 +58,35 @@ class BrandController
     {
         $brand = Brand::findOrFail($id);
 
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:brands,slug,' . $id,
-            'description' => 'nullable|string',
-            'logo' => 'nullable|string|max:255',
-            'website' => 'nullable|string|max:255',
-            'is_active' => 'boolean',
-        ]);
+        $validated = $request->validate($this->rules($request, $id));
+
+        if ($request->hasFile('logo')) {
+            $validated['logo'] = PublicStorage::store($request->file('logo'), 'brands');
+        } elseif (array_key_exists('logo', $validated)) {
+            $validated['logo'] = PublicStorage::normalize($validated['logo']);
+        }
 
         $brand->update($validated);
 
         return response()->json([
             'success' => true,
             'message' => 'Marca actualizada exitosamente.',
-            'data' => new BrandResource($brand)
+            'data' => new BrandResource($brand),
         ]);
+    }
+
+    private function rules(Request $request, ?int $id = null): array
+    {
+        return [
+            'name' => ($id ? 'sometimes' : 'required').'|string|max:255',
+            'slug' => 'nullable|string|max:255|unique:brands,slug'.($id ? ','.$id : ''),
+            'description' => 'nullable|string',
+            'logo' => $request->hasFile('logo')
+                ? 'file|image|max:10240'
+                : 'nullable|string|max:255',
+            'website' => 'nullable|string|max:255',
+            'is_active' => 'boolean',
+        ];
     }
 
     public function destroy($id)
@@ -83,7 +96,7 @@ class BrandController
         if ($brand->products()->count() > 0) {
             return response()->json([
                 'success' => false,
-                'message' => 'No se puede eliminar la marca porque tiene productos asociados.'
+                'message' => 'No se puede eliminar la marca porque tiene productos asociados.',
             ], 409);
         }
 
@@ -91,7 +104,7 @@ class BrandController
 
         return response()->json([
             'success' => true,
-            'message' => 'Marca eliminada exitosamente.'
+            'message' => 'Marca eliminada exitosamente.',
         ]);
     }
 }

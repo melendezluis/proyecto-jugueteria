@@ -9,6 +9,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
@@ -22,10 +23,12 @@ use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 class ProductResource extends Resource
 {
@@ -34,6 +37,12 @@ class ProductResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
     protected static ?string $recordTitleAttribute = 'name';
+
+    protected static ?string $navigationLabel = 'Productos';
+
+    protected static ?string $modelLabel = 'Producto';
+
+    protected static ?string $pluralModelLabel = 'Productos';
 
     public static function form(Schema $schema): Schema
     {
@@ -46,13 +55,15 @@ class ProductResource extends Resource
                                 Grid::make(2)
                                     ->schema([
                                         TextInput::make('name')
+                                            ->label('Nombre')
                                             ->required()
                                             ->maxLength(255)
                                             ->live(onBlur: true)
                                             ->afterStateUpdated(function ($set, $state) {
-                                                $set('slug', \Illuminate\Support\Str::slug($state));
+                                                $set('slug', Str::slug($state));
                                             }),
                                         TextInput::make('slug')
+                                            ->label('Slug')
                                             ->required()
                                             ->maxLength(255)
                                             ->unique(ignoreRecord: true),
@@ -172,27 +183,41 @@ class ProductResource extends Resource
                                 Repeater::make('images')
                                     ->relationship()
                                     ->schema([
-                                        Grid::make(4)
+                                        FileUpload::make('image_path')
+                                            ->label('Imagen')
+                                            ->disk('public')
+                                            ->directory('products')
+                                            ->visibility('public')
+                                            ->image()
+                                            ->maxSize(10240)
+                                            ->imageEditor()
+                                            ->required()
+                                            ->columnSpanFull(),
+                                        Grid::make(2)
                                             ->schema([
-                                                TextInput::make('image_path')
-                                                    ->label('Ruta de Imagen')
-                                                    ->required()
-                                                    ->maxLength(255),
                                                 TextInput::make('alt_text')
                                                     ->label('Texto Alternativo')
                                                     ->maxLength(255),
-                                                TextInput::make('position')
-                                                    ->label('Posición')
-                                                    ->numeric()
-                                                    ->default(0),
                                                 Toggle::make('is_main')
-                                                    ->label('Principal')
+                                                    ->label('Imagen Principal')
                                                     ->default(false),
                                             ]),
                                     ])
+                                    ->orderColumn('position')
+                                    ->reorderable()
+                                    ->minItems(1)
                                     ->defaultItems(0)
                                     ->collapsible()
-                                    ->addActionLabel('Agregar Imagen'),
+                                    ->addActionLabel('Agregar Imagen')
+                                    ->mutateRelationshipDataBeforeFillUsing(
+                                        fn (array $data): array => static::toFormImagePath($data)
+                                    )
+                                    ->mutateRelationshipDataBeforeSaveUsing(
+                                        fn (array $data): array => static::toStoredImagePath($data)
+                                    )
+                                    ->mutateRelationshipDataBeforeCreateUsing(
+                                        fn (array $data): array => static::toStoredImagePath($data)
+                                    ),
                             ]),
                         Tab::make('Estado')
                             ->schema([
@@ -215,6 +240,13 @@ class ProductResource extends Resource
         return $table
             ->recordTitleAttribute('name')
             ->columns([
+                ImageColumn::make('image')
+                    ->label('Imagen')
+                    ->getStateUsing(fn (Product $record): ?string => static::previewUrl($record))
+                    ->size(48)
+                    ->square()
+                    ->rounded()
+                    ->placeholder('Sin imagen'),
                 TextColumn::make('name')
                     ->label('Nombre')
                     ->searchable()
@@ -243,8 +275,10 @@ class ProductResource extends Resource
             ])
             ->filters([
                 SelectFilter::make('category')
+                    ->label('Categoría')
                     ->relationship('category', 'name'),
                 SelectFilter::make('brand')
+                    ->label('Marca')
                     ->relationship('brand', 'name'),
             ])
             ->defaultSort('created_at', 'desc')
@@ -264,5 +298,55 @@ class ProductResource extends Resource
         return [
             'index' => ManageProducts::route('/'),
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['category', 'brand', 'images']);
+    }
+
+    protected static function toFormImagePath(array $data): array
+    {
+        $path = $data['image_path'] ?? null;
+
+        if (is_string($path) && str_starts_with($path, '/storage/')) {
+            $data['image_path'] = substr($path, strlen('/storage/'));
+        }
+
+        return $data;
+    }
+
+    protected static function toStoredImagePath(array $data): array
+    {
+        $path = $data['image_path'] ?? null;
+
+        if (! is_string($path) || $path === '') {
+            return $data;
+        }
+
+        $data['image_path'] = static::storagePath($path);
+
+        return $data;
+    }
+
+    protected static function storagePath(string $path): string
+    {
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://') || str_starts_with($path, '/')) {
+            return $path;
+        }
+
+        return '/storage/'.$path;
+    }
+
+    protected static function previewUrl(Product $record): ?string
+    {
+        $path = $record->images->firstWhere('is_main', true)?->image_path
+            ?? $record->images->first()?->image_path;
+
+        if (! is_string($path) || $path === '') {
+            return null;
+        }
+
+        return asset(static::storagePath($path));
     }
 }
