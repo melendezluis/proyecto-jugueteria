@@ -12,7 +12,11 @@ class PublicStorage
     public static function store(UploadedFile $file, string $directory): string
     {
         $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension() ?: '');
-        $extension = preg_replace('/[^a-z0-9]/', '', $extension) ?: 'bin';
+
+        $extension = match ($extension) {
+            'jfif', 'jpe', 'jpeg' => 'jpg',
+            default => preg_replace('/[^a-z0-9]/', '', $extension) ?: 'bin',
+        };
 
         $path = $file->storeAs($directory, Str::random(40).'.'.$extension, 'public');
 
