@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import ProductCard from '@/components/ProductCard';
 import PromoBar from '@/components/home/PromoBar';
 import HeroCarousel from '@/components/home/HeroCarousel';
@@ -359,13 +360,36 @@ export default function HomeContent({
   queryParams,
   initialSort = 'az',
 }: HomeContentProps) {
+  const searchParams = useSearchParams();
   const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(() => {
+    const c = searchParams.get('category_id');
+    return c ? Number(c) : null;
+  });
   const [brands, setBrands] = useState<Brand[]>([]);
-  const [selectedBrand, setSelectedBrand] = useState<number | null>(null);
-  const [selectedAge, setSelectedAge] = useState<string | null>(null);
-  const [selectedPrice, setSelectedPrice] = useState<string | null>(null);
+  const [selectedBrand, setSelectedBrand] = useState<number | null>(() => {
+    const b = searchParams.get('brand_id');
+    return b ? Number(b) : null;
+  });
+  const [selectedAge, setSelectedAge] = useState<string | null>(() => {
+    const min = searchParams.get('min_age');
+    const max = searchParams.get('max_age');
+    if (!min) return null;
+    const m = Number(min);
+    const M = max ? Number(max) : 999;
+    const found = AGE_RANGES.find(r => r.min === m && r.max === M);
+    return found ? found.id : null;
+  });
+  const [selectedPrice, setSelectedPrice] = useState<string | null>(() => {
+    const min = searchParams.get('min_price');
+    const max = searchParams.get('max_price');
+    if (!min && !max) return null;
+    const m = min ? Number(min) : 0;
+    const M = max ? Number(max) : Infinity;
+    const found = PRICE_RANGES.find(r => r.min === m && (r.max === M || (!max && r.max === Infinity)));
+    return found ? found.id : null;
+  });
   const [sort, setSort] = useState<SortOption>(initialSort);
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [total, setTotal] = useState(initialTotal ?? initialProducts.length);
@@ -395,18 +419,29 @@ export default function HomeContent({
 
   const buildQuery = useCallback(
     (page: number): Record<string, string | string[] | number | undefined> => {
-      const params: Record<string, string | string[] | number | undefined> = { ...queryParams };
-      if (searchTerm.trim()) params.search = searchTerm.trim();
-      if (selectedCategory !== null) params.category_id = selectedCategory;
-      if (selectedBrand !== null) params.brand_id = selectedBrand;
-      if (ageRange) {
+      const qp = queryParams || {};
+      const params: Record<string, string | string[] | number | undefined> = {};
+      if (qp.category_id) params.category_id = qp.category_id;
+      else if (qp.category) params.category = qp.category;
+      if (qp.brand_id) params.brand_id = qp.brand_id;
+      else if (qp.brand) params.brand = qp.brand;
+      if (qp.min_age !== undefined && qp.min_age !== '') params.min_age = qp.min_age;
+      if (qp.max_age !== undefined && qp.max_age !== '') params.max_age = qp.max_age;
+      if (qp.min_price !== undefined && qp.min_price !== '') params.min_price = qp.min_price;
+      if (qp.max_price !== undefined && qp.max_price !== '') params.max_price = qp.max_price;
+      if (qp.q) params.q = qp.q;
+      if (qp.search) params.search = qp.search;
+      if (selectedCategory !== null && !params.category_id && !params.category) params.category_id = selectedCategory;
+      if (selectedBrand !== null && !params.brand_id && !params.brand) params.brand_id = selectedBrand;
+      if (ageRange && params.min_age === undefined && params.max_age === undefined) {
         params.min_age = ageRange.min;
         params.max_age = ageRange.max;
       }
-      if (priceRange) {
+      if (priceRange && params.min_price === undefined && params.max_price === undefined) {
         params.min_price = priceRange.min;
         params.max_price = priceRange.max;
       }
+      if (searchTerm.trim()) params.search = searchTerm.trim();
       params.sort_by = SORT_QUERY[sort].by;
       params.sort_order = SORT_QUERY[sort].order;
       params.per_page = GRID_PAGE_SIZE;
@@ -499,231 +534,26 @@ export default function HomeContent({
   return (
     <div className="min-h-screen bg-[#FFFAF5]">
       {/* BARRA SUPERIOR - Cielo pastel */}
-      <div className="bg-[#072652] text-white">
+      <div className="bg-slate-400 text-white">
         <div className="max-w-7xl mx-auto px-6 py-3">
           {/* Primera línea con navegación y buscador */}
-          <div className="flex items-center justify-between relative">
-            <div className="hidden md:flex items-center gap-8 text-sm font-medium">
-              <FilterDropdown
-                key="filtro-categorias"
-                id="categorias"
-                label="Categorías"
-                active={selectedCategory !== null}
-                openMenu={openMenu}
-                setOpenMenu={setOpenMenu}
-              >
-                <OptionButton active={selectedCategory === null} onClick={() => setSelectedCategory(null)}>
-                  Todos
-                </OptionButton>
-                {categories.map(cat => (
-                  <OptionButton
-                    key={cat.id}
-                    active={selectedCategory === cat.id}
-                    onClick={() => setSelectedCategory(cat.id)}
-                  >
-                    {cat.name}
-                  </OptionButton>
-                ))}
-              </FilterDropdown>
-
-              <FilterDropdown
-                key="filtro-marcas"
-                id="marcas"
-                label="Marcas"
-                active={selectedBrand !== null}
-                openMenu={openMenu}
-                setOpenMenu={setOpenMenu}
-              >
-                <OptionButton active={selectedBrand === null} onClick={() => setSelectedBrand(null)}>
-                  Todas
-                </OptionButton>
-                {brands.map(brand => (
-                  <OptionButton
-                    key={brand.id}
-                    active={selectedBrand === brand.id}
-                    onClick={() => setSelectedBrand(brand.id)}
-                  >
-                    {brand.name}
-                  </OptionButton>
-                ))}
-              </FilterDropdown>
-
-              <FilterDropdown
-                key="filtro-edades"
-                id="edades"
-                label="Edades"
-                active={selectedAge !== null}
-                openMenu={openMenu}
-                setOpenMenu={setOpenMenu}
-              >
-                <OptionButton active={selectedAge === null} onClick={() => setSelectedAge(null)}>
-                  Todas
-                </OptionButton>
-                {AGE_RANGES.map(range => (
-                  <OptionButton
-                    key={range.id}
-                    active={selectedAge === range.id}
-                    onClick={() => setSelectedAge(range.id)}
-                  >
-                    {range.label}
-                  </OptionButton>
-                ))}
-              </FilterDropdown>
-
-              <FilterDropdown
-                key="filtro-precio"
-                id="precio"
-                label="Por Precio"
-                active={selectedPrice !== null}
-                openMenu={openMenu}
-                setOpenMenu={setOpenMenu}
-              >
-                <OptionButton active={selectedPrice === null} onClick={() => setSelectedPrice(null)}>
-                  Todos
-                </OptionButton>
-                {PRICE_RANGES.map(range => (
-                  <OptionButton
-                    key={range.id}
-                    active={selectedPrice === range.id}
-                    onClick={() => setSelectedPrice(range.id)}
-                  >
-                    {range.label}
-                  </OptionButton>
-                ))}
-              </FilterDropdown>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 relative">
+            <div className="flex items-center gap-3 overflow-x-auto pb-1 flex-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full md:w-auto">
+              <PromoBar />
             </div>
 
             {/* Buscador */}
-            <div className="flex items-center gap-3">
-              <p key="search-hint" className="text-sm text-white hidden lg:block">¿Qué juguete estás buscando?</p>
+            <div className="flex flex-col gap-1 w-full md:w-auto">
+              <p key="search-hint" className="text-sm text-white hidden md:block md:self-end">¿Qué juguete estás buscando?</p>
               <input
                 key="search-input"
                 type="text"
                 placeholder="Buscar juguetes, marca o categorias"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="px-4 py-1.5 border border-white/40 rounded-full focus:outline-none focus:border-[#FFD54F] bg-white text-[#2B2D42] placeholder:text-gray-400 text-sm w-56 lg:w-72"
+                className="px-4 py-2 border border-white/40 rounded-full focus:outline-none focus:border-[#FFD54F] bg-white text-[#2B2D42] placeholder:text-gray-400 text-sm w-full md:w-56 lg:w-72"
               />
             </div>
-          </div>
-
-          {/* Segunda línea - Promociones rápidas */}
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/30 text-sm">
-            <div className="flex items-center gap-5 overflow-x-auto pb-1 flex-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <PromoBar />
-            </div>
-          </div>
-
-          {/* Tercera línea - Filtros (solo móvil) */}
-          <div className="md:hidden mt-3 pt-3 border-t border-white/30">
-            <button
-              key="mobile-filters-toggle"
-              onClick={() => setMobileFiltersOpen(o => !o)}
-              aria-expanded={mobileFiltersOpen}
-              className={`flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full transition-colors ${
-                mobileFiltersOpen || hasActiveFilters
-                  ? 'bg-[#FFD54F] text-[#2B2D42]'
-                  : 'bg-white/15 text-white hover:bg-white/25'
-              }`}
-            >
-              <svg key="filtros-icon" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-              </svg>
-              Filtros
-              {hasActiveFilters && <span key="filtros-dot" className="bg-pink-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">!</span>}
-            </button>
-
-            {mobileFiltersOpen && (
-              <div key="mobile-filters" className="flex flex-wrap items-center gap-x-8 gap-y-3 mt-4 text-white font-medium pb-1">
-                <FilterDropdown
-                  key="mob-filtro-categorias"
-                  id="categorias"
-                  label="Categorías"
-                  active={selectedCategory !== null}
-                  openMenu={openMenu}
-                  setOpenMenu={setOpenMenu}
-                >
-                  <OptionButton active={selectedCategory === null} onClick={() => setSelectedCategory(null)}>
-                    Todos
-                  </OptionButton>
-                  {categories.map(cat => (
-                    <OptionButton
-                      key={cat.id}
-                      active={selectedCategory === cat.id}
-                      onClick={() => setSelectedCategory(cat.id)}
-                    >
-                      {cat.name}
-                    </OptionButton>
-                  ))}
-                </FilterDropdown>
-
-                <FilterDropdown
-                  key="mob-filtro-marcas"
-                  id="marcas"
-                  label="Marcas"
-                  active={selectedBrand !== null}
-                  openMenu={openMenu}
-                  setOpenMenu={setOpenMenu}
-                >
-                  <OptionButton active={selectedBrand === null} onClick={() => setSelectedBrand(null)}>
-                    Todas
-                  </OptionButton>
-                  {brands.map(brand => (
-                    <OptionButton
-                      key={brand.id}
-                      active={selectedBrand === brand.id}
-                      onClick={() => setSelectedBrand(brand.id)}
-                    >
-                      {brand.name}
-                    </OptionButton>
-                  ))}
-                </FilterDropdown>
-
-                <FilterDropdown
-                  key="mob-filtro-edades"
-                  id="edades"
-                  label="Edades"
-                  active={selectedAge !== null}
-                  openMenu={openMenu}
-                  setOpenMenu={setOpenMenu}
-                >
-                  <OptionButton active={selectedAge === null} onClick={() => setSelectedAge(null)}>
-                    Todas
-                  </OptionButton>
-                  {AGE_RANGES.map(range => (
-                    <OptionButton
-                      key={range.id}
-                      active={selectedAge === range.id}
-                      onClick={() => setSelectedAge(range.id)}
-                    >
-                      {range.label}
-                    </OptionButton>
-                  ))}
-                </FilterDropdown>
-
-                <FilterDropdown
-                  key="mob-filtro-precio"
-                  id="precio"
-                  label="Por Precio"
-                  active={selectedPrice !== null}
-                  openMenu={openMenu}
-                  setOpenMenu={setOpenMenu}
-                >
-                  <OptionButton active={selectedPrice === null} onClick={() => setSelectedPrice(null)}>
-                    Todos
-                  </OptionButton>
-                  {PRICE_RANGES.map(range => (
-                    <OptionButton
-                      key={range.id}
-                      active={selectedPrice === range.id}
-                      onClick={() => setSelectedPrice(range.id)}
-                    >
-                      {range.label}
-                    </OptionButton>
-                  ))}
-                </FilterDropdown>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -860,6 +690,9 @@ export default function HomeContent({
       onClick={() => {
         setSearchInput('');
         clearAllFilters();
+        if (typeof window !== 'undefined') {
+          window.location.href = '/';
+        }
       }}
       className="mt-8 group relative inline-flex items-center gap-2 px-8 py-3.5 bg-[#6EBA92] hover:bg-[#4F916C] text-white rounded-full font-bold text-lg shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5"
     >
