@@ -18,6 +18,12 @@ class RealDataSeeder extends Seeder
 
     public function run(): void
     {
+        if (app()->environment('production')) {
+            $this->command?->warn('RealDataSeeder está deshabilitado en producción.');
+
+            return;
+        }
+
         $data = require __DIR__ . '/real_data.php';
 
         $this->seedCategories($data['categories'] ?? []);

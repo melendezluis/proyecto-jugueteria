@@ -11,9 +11,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call([
-            RolePermissionSeeder::class,
-            RealDataSeeder::class,
-        ]);
+        $this->call(RolePermissionSeeder::class);
+        $this->call(AdminUserSeeder::class);
+
+        if (! app()->environment('production')) {
+            $this->call(RealDataSeeder::class);
+        }
     }
 }
