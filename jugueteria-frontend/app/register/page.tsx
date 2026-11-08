@@ -4,6 +4,11 @@ import { useState, FormEvent } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import Image from 'next/image';
+import {
+  isStrongPassword,
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_REQUIREMENTS,
+} from '@/utils/password';
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -23,8 +28,8 @@ export default function RegisterPage() {
       return;
     }
 
-    if (password.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres');
+    if (!isStrongPassword(password)) {
+      setError(PASSWORD_REQUIREMENTS);
       return;
     }
 
@@ -75,6 +80,8 @@ export default function RegisterPage() {
               value={name}
               onChange={e => setName(e.target.value)}
               required
+              maxLength={255}
+              autoComplete="name"
               className="w-full px-4 py-3 border border-gray-300 bg-[#F8F9FA] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6EBA92]/40 focus:border-[#6EBA92] text-[#2B2D42] placeholder:text-gray-400"
               placeholder="Tu nombre"
             />
@@ -90,6 +97,8 @@ export default function RegisterPage() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
+              maxLength={255}
+              autoComplete="email"
               className="w-full px-4 py-3 border border-gray-300 bg-[#F8F9FA] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6EBA92]/40 focus:border-[#6EBA92] text-[#2B2D42] placeholder:text-gray-400"
               placeholder="tu@correo.com"
             />
@@ -108,12 +117,14 @@ export default function RegisterPage() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
-              minLength={8}
+              minLength={PASSWORD_MIN_LENGTH}
+              maxLength={255}
+              autoComplete="new-password"
               className="w-full px-4 py-3 border border-gray-300 bg-[#F8F9FA] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6EBA92]/40 focus:border-[#6EBA92] text-[#2B2D42] placeholder:text-gray-400"
-              placeholder="Mínimo 8 caracteres"
+              placeholder="Mínimo 10 caracteres"
             />
-            <p className={`mt-1.5 text-xs font-medium ${password.length >= 8 ? 'text-[#06D6A0]' : 'text-[#219EBC]'}`}>
-              {password.length >= 8 ? '✓ Contraseña válida' : 'La contraseña debe tener al menos 8 caracteres'}
+            <p className={`mt-1.5 text-xs font-medium ${isStrongPassword(password) ? 'text-[#06D6A0]' : 'text-[#219EBC]'}`}>
+              {isStrongPassword(password) ? '✓ Contraseña válida' : PASSWORD_REQUIREMENTS}
             </p>
           </div>
 
@@ -127,6 +138,9 @@ export default function RegisterPage() {
               value={passwordConfirmation}
               onChange={e => setPasswordConfirmation(e.target.value)}
               required
+              minLength={PASSWORD_MIN_LENGTH}
+              maxLength={255}
+              autoComplete="new-password"
               className="w-full px-4 py-3 border border-gray-300 bg-[#F8F9FA] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6EBA92]/40 focus:border-[#6EBA92] text-[#2B2D42] placeholder:text-gray-400"
               placeholder="Repite la contraseña"
             />
@@ -136,6 +150,24 @@ export default function RegisterPage() {
               </p>
             )}
           </div>
+
+          <p className="text-center text-xs leading-5 text-[#2B2D42]/55">
+            Al crear tu cuenta aceptas nuestros{' '}
+            <Link
+              href="/terminos-y-condiciones"
+              className="font-semibold text-[#219EBC] hover:underline"
+            >
+              Términos y Condiciones
+            </Link>{' '}
+            y nuestra{' '}
+            <Link
+              href="/politica-de-privacidad"
+              className="font-semibold text-[#219EBC] hover:underline"
+            >
+              Política de Privacidad
+            </Link>
+            .
+          </p>
 
           <button
             type="submit"

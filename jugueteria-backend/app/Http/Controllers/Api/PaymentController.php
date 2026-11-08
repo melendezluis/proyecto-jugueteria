@@ -53,22 +53,7 @@ class PaymentController
         try {
             $this->bootMercadoPago();
 
-            $items = $order->items->map(fn ($item) => [
-                'id' => (string) $item->product_id,
-                'title' => $item->product_name,
-                'quantity' => (int) $item->quantity,
-                'unit_price' => round((float) $item->unit_price, 2),
-                'currency_id' => 'PEN',
-            ])->values()->toArray();
-
-            if ((float) $order->shipping > 0) {
-                $items[] = [
-                    'title' => 'Envío',
-                    'quantity' => 1,
-                    'unit_price' => round((float) $order->shipping, 2),
-                    'currency_id' => 'PEN',
-                ];
-            }
+            $items = $this->buildPreferenceItems($order);
 
             $orderId = $order->id;
             $frontendUrl = rtrim(config('mercadopago.frontend_url'), '/');
@@ -272,6 +257,88 @@ class PaymentController
                 url: "/order-confirmation/{$order->id}",
             ));
         }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildPreferenceItems(Order $order): array
+    {
+        $discount = (float) $order->discount;
+        $subtotal = (float) $order->subtotal;
+        $items = [];
+
+        if ($discount <= 0) {
+            foreach ($order->items as $item) {
+                $data = [
+                    'id' => (string) $item->product_id,
+                    'title' => $item->product_name,
+                    'quantity' => (int) $item->quantity,
+                    'unit_price' => round((float) $item->unit_price, 2),
+                    'currency_id' => 'PEN',
+                ];
+
+                $pictureUrl = $this->absoluteImageUrl($item->product_image);
+
+                if ($pictureUrl) {
+                    $data['picture_url'] = $pictureUrl;
+                }
+
+                $items[] = $data;
+            }
+        } else {
+            $orderItems = $order->items->values();
+            $accumulated = 0.0;
+
+            foreach ($orderItems as $index => $item) {
+                $lineTotal = (float) $item->total;
+                $discountedTotal = $index === $orderItems->count() - 1
+                    ? round(max(0, $subtotal - $discount - $accumulated), 2)
+                    : round($lineTotal * (1 - ($discount / $subtotal)), 2);
+
+                $accumulated += $discountedTotal;
+
+                $data = [
+                    'id' => (string) $item->product_id,
+                    'title' => "{$item->product_name} (x{$item->quantity})",
+                    'quantity' => 1,
+                    'unit_price' => $discountedTotal,
+                    'currency_id' => 'PEN',
+                ];
+
+                $pictureUrl = $this->absoluteImageUrl($item->product_image);
+
+                if ($pictureUrl) {
+                    $data['picture_url'] = $pictureUrl;
+                }
+
+                $items[] = $data;
+            }
+        }
+
+        if ((float) $order->shipping > 0) {
+            $items[] = [
+                'title' => 'Envío',
+                'quantity' => 1,
+                'unit_price' => round((float) $order->shipping, 2),
+                'currency_id' => 'PEN',
+            ];
+        }
+
+        return $items;
+    }
+
+    private function absoluteImageUrl(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+
+        if (preg_match('#^https?://#i', $path)) {
+            return $path;
+        }
+
+        return rtrim((string) config('app.url'), '/') . '/' . ltrim($path, '/');
     }
 
     /**

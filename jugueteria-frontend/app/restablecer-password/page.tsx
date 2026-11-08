@@ -5,6 +5,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { resetPasswordApi } from '@/services/api';
+import {
+  isStrongPassword,
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_REQUIREMENTS,
+} from '@/utils/password';
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -24,6 +29,11 @@ function ResetPasswordForm() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
+
+    if (!isStrongPassword(password)) {
+      setFieldErrors({ password: PASSWORD_REQUIREMENTS });
+      return;
+    }
 
     if (password !== confirmPassword) {
       setFieldErrors({ password_confirmation: 'Las contraseñas no coinciden.' });
@@ -103,7 +113,8 @@ function ResetPasswordForm() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
-                minLength={8}
+                minLength={PASSWORD_MIN_LENGTH}
+                maxLength={255}
                 placeholder=" "
                 autoComplete="new-password"
                 className={fieldClasses(!!fieldErrors.password)}
@@ -128,7 +139,8 @@ function ResetPasswordForm() {
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
                 required
-                minLength={8}
+                minLength={PASSWORD_MIN_LENGTH}
+                maxLength={255}
                 placeholder=" "
                 autoComplete="new-password"
                 className={fieldClasses(!!fieldErrors.password_confirmation)}
@@ -162,9 +174,7 @@ function ResetPasswordForm() {
             </button>
           </form>
 
-          <p className="text-center text-sm text-gray-400">
-            La contraseña debe tener al menos 8 caracteres.
-          </p>
+          <p className="text-center text-sm text-gray-400">{PASSWORD_REQUIREMENTS}</p>
         </>
       )}
 

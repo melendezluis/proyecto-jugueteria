@@ -279,11 +279,12 @@ class AdminProductImageTest extends TestCase
                 'images' => [
                     ['image_path' => [$this->png()], 'is_main' => true],
                 ],
-            ]);
+            ])
+            ->assertNotified();
 
         $this->get(route('filament.admin.resources.products.index'))
             ->assertOk()
-            ->assertSee('fi-no-notification-title', false)
+            ->assertSee('data-filament-notifications', false)
             ->assertSee('Carro de Juguete');
     }
 }

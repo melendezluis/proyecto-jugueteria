@@ -203,8 +203,8 @@ export default function Header() {
   useEffect(() => {
     Promise.all([getCategories().catch(() => ({ data: [] })), getBrands().catch(() => ({ data: [] }))])
       .then(([cats, brs]) => {
-        setCategories((cats as any).data || []);
-        setBrands((brs as any).data || []);
+        setCategories(cats.data || []);
+        setBrands(brs.data || []);
       })
       .catch(() => {});
   }, []);
@@ -225,7 +225,6 @@ export default function Header() {
     setSelectedCategory(id);
     setOpenMenu(null);
     if (id) {
-      const cat = categories.find(c => c.id === id);
       const url = new URL(window.location.href);
       url.pathname = '/';
       url.searchParams.delete('brand_id');

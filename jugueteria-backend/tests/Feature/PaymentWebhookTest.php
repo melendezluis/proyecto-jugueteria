@@ -35,7 +35,7 @@ class PaymentWebhookTest extends TestCase
     private function webhookHeaders(int|string|null $dataId): array
     {
         $requestId = 'test-request-id';
-        $ts = (int) (microtime(true) * 1000);
+        $ts = time();
 
         $parts = [];
         if ($dataId !== null) {

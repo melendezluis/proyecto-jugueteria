@@ -56,7 +56,7 @@ export default function RecuperarPasswordPage() {
                 ✓ {message}
               </div>
               <p className="text-sm text-gray-500">
-                Revisa tu bandeja de entrada (y la carpeta de spam). El enlace es válido por 60
+                Revisa tu bandeja de entrada (y la carpeta de spam). El enlace es válido por 30
                 minutos.
               </p>
             </>
@@ -75,6 +75,8 @@ export default function RecuperarPasswordPage() {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   required
+                  maxLength={255}
+                  autoComplete="email"
                   placeholder=" "
                   className="peer w-full px-4 py-3 pt-5 border-2 bg-[#F8F9FA] rounded-xl focus:outline-none focus:border-[#e9ff70] focus:ring-2 focus:ring-[#e9ff70]/40 text-[#2B2D42] transition-all duration-200 border-gray-300"
                 />

@@ -38,6 +38,7 @@ class OrderObserver
         if ($newStatus === 'cancelled' && ! $order->cancelled_at) {
             $order->cancelled_at = now();
             $this->releaseStock($order);
+            $this->releaseCoupon($order);
 
             $order->loadMissing('user');
             $total = number_format((float) $order->total, 2, '.', '');
@@ -70,11 +71,17 @@ class OrderObserver
         if ($newStatus === 'shipped' && $originalStatus !== 'shipped') {
             $order->loadMissing('user');
 
+            $isPickup = $order->delivery_method === 'pickup';
+
             OrderNotifier::send($order->user, new OrderStatusNotification(
                 order: $order,
                 type: 'order-shipped',
-                subject: "Tu pedido {$order->order_number} está en camino",
-                message: "Tu pedido fue enviado. Llegará pronto a {$order->shipping_address}.",
+                subject: $isPickup
+                    ? "Tu pedido {$order->order_number} está listo para recoger"
+                    : "Tu pedido {$order->order_number} está en camino",
+                message: $isPickup
+                    ? 'Tu pedido está listo. Puedes acercarte a la tienda para recogerlo.'
+                    : "Tu pedido fue enviado. Llegará pronto a {$order->shipping_address_full}.",
                 url: "/order-confirmation/{$order->id}",
             ));
         }
@@ -86,7 +93,15 @@ class OrderObserver
         if ($order->status === 'pending') {
             $order->loadMissing('items');
             $this->releaseStock($order);
+            $this->releaseCoupon($order);
         }
+    }
+
+    private function releaseCoupon(Order $order): void
+    {
+        $order->couponRedemption()
+            ->whereNull('released_at')
+            ->update(['released_at' => now()]);
     }
 
     /**

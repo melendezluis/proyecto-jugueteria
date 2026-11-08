@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getOrders, cancelOrderApi } from '@/services/api';
+import { getOrders, cancelOrderApi, getImageUrl } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Order } from '@/types';
 
@@ -119,6 +119,19 @@ export default function OrdersPage() {
                   <span className={`px-4 py-1.5 rounded-full text-sm font-semibold ${STATUS_COLORS[order.status]}`}>
                     {order.status_label}
                   </span>
+                  <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                    {order.delivery_method_label}
+                  </span>
+                  {order.gift_wrap && (
+                    <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600">
+                      🎁 Regalo
+                    </span>
+                  )}
+                  {order.discount > 0 && (
+                    <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
+                      Cupón {order.coupon_code ?? ''}
+                    </span>
+                  )}
                   <p className="text-lg font-bold text-pink-600">S/ {order.total.toFixed(2)}</p>
                   {order.status === 'pending' && (
                     <button
@@ -131,16 +144,30 @@ export default function OrdersPage() {
                   )}
                 </div>
                 <div className="border-t pt-4 space-y-2">
-                  {order.items.map(item => (
-                    <div key={item.id} className="flex justify-between text-sm gap-4">
-                      <span className="text-gray-600">
-                        {item.quantity} x {item.product_name}
-                        {item.color && <span className="text-gray-400"> ({item.color})</span>}
-                        {item.size && <span className="text-gray-400"> - {item.size}</span>}
-                      </span>
-                      <span className="font-medium text-gray-800">S/ {item.total.toFixed(2)}</span>
-                    </div>
-                  ))}
+                  {order.items.map(item => {
+                    const thumb = getImageUrl(item.product_image);
+                    return (
+                      <div key={item.id} className="flex items-center justify-between text-sm gap-4">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center text-base overflow-hidden flex-shrink-0">
+                            {thumb ? (
+                              <img src={thumb} alt={item.product_name} className="w-full h-full object-cover" />
+                            ) : (
+                              '🧸'
+                            )}
+                          </div>
+                          <span className="text-gray-600">
+                            {item.quantity} x {item.product_name}
+                            {item.color && <span className="text-gray-400"> ({item.color})</span>}
+                            {item.size && <span className="text-gray-400"> - {item.size}</span>}
+                          </span>
+                        </div>
+                        <span className="font-medium text-gray-800 whitespace-nowrap">
+                          S/ {item.total.toFixed(2)}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}

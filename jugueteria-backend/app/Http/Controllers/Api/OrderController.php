@@ -4,10 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Resources\OrderResource;
+use App\Models\CouponRedemption;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\Product;
-use App\Models\ProductVariant;
+use App\Services\CouponService;
+use App\Services\OrderPricingService;
 use App\Support\Shipping;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,78 +16,88 @@ use Illuminate\Validation\ValidationException;
 
 class OrderController
 {
+    public function __construct(
+        private OrderPricingService $pricing,
+        private CouponService $coupons,
+    ) {}
+
     public function store(StoreOrderRequest $request)
     {
         $validated = $request->validated();
         $user = $request->user();
 
         $order = DB::transaction(function () use ($user, $validated) {
-            $subtotal = 0;
-            $lines = [];
+            $pricing = $this->pricing->buildLines($validated['items'], true);
+            $lines = $pricing['lines'];
+            $subtotal = $pricing['subtotal'];
 
-            foreach ($validated['items'] as $item) {
-                $product = Product::where('id', $item['product_id'])->lockForUpdate()->first();
+            $deliveryMethod = $validated['delivery_method'] ?? 'shipping';
+            $quote = Shipping::calculate(
+                $subtotal,
+                isset($validated['shipping_latitude']) ? (float) $validated['shipping_latitude'] : null,
+                isset($validated['shipping_longitude']) ? (float) $validated['shipping_longitude'] : null,
+            );
 
-                if (! $product || ! $product->is_active) {
-                    throw ValidationException::withMessages([
-                        'items' => ["El producto con ID {$item['product_id']} no está disponible."],
-                    ]);
-                }
-
-                $unitPrice = $product->offer_price ?? $product->price;
-                $variant = null;
-
-                if (! empty($item['variant_id'])) {
-                    $variant = ProductVariant::where('id', $item['variant_id'])
-                        ->where('product_id', $product->id)
-                        ->lockForUpdate()
-                        ->first();
-
-                    if (! $variant || ! $variant->is_active) {
-                        throw ValidationException::withMessages([
-                            'items' => ["La variante del producto {$product->name} no está disponible."],
-                        ]);
-                    }
-                    if ($variant->stock < $item['quantity']) {
-                        throw ValidationException::withMessages([
-                            'items' => ["Stock insuficiente para la variante de {$product->name}."],
-                        ]);
-                    }
-                    $unitPrice += (float) $variant->price_extra;
-                } elseif ($product->stock < $item['quantity']) {
-                    throw ValidationException::withMessages([
-                        'items' => ["Stock insuficiente para {$product->name} (disponible: {$product->stock})."],
-                    ]);
-                }
-
-                $quantity = $item['quantity'];
-                $lineTotal = round($unitPrice * $quantity, 2);
-                $subtotal += $lineTotal;
-
-                $lines[] = [
-                    'product' => $product,
-                    'variant' => $variant,
-                    'quantity' => $quantity,
-                    'unit_price' => $unitPrice,
-                    'total' => $lineTotal,
-                ];
+            if ($deliveryMethod === 'shipping' && ! $quote['available']) {
+                throw ValidationException::withMessages([
+                    'shipping_address' => [
+                        'No hay cobertura de envío para esa ubicación (más de '
+                        . config('shipping.max_radius_km')
+                        . ' km desde Chancay). Puedes elegir recojo en tienda.',
+                    ],
+                ]);
             }
 
-            $shipping = Shipping::calculate($subtotal);
-            $total = round($subtotal + $shipping, 2);
+            $shipping = $deliveryMethod === 'pickup' ? 0.0 : (float) $quote['rate'];
+            $coupon = null;
+            $couponCode = null;
+            $discount = 0.0;
+
+            if (! empty($validated['coupon_code'])) {
+                $couponQuote = $this->coupons->quote(
+                    $validated['coupon_code'],
+                    $subtotal,
+                    $user,
+                    true,
+                );
+                $coupon = $couponQuote['coupon'];
+                $discount = $couponQuote['discount'];
+                $couponCode = $coupon->code;
+            }
+
+            $total = round($subtotal - $discount + $shipping, 2);
 
             $order = Order::create([
                 'user_id' => $user->id,
+                'coupon_id' => $coupon?->id,
+                'coupon_code' => $couponCode,
                 'subtotal' => $subtotal,
+                'discount' => $discount,
                 'shipping' => $shipping,
                 'total' => $total,
                 'status' => 'pending',
+                'delivery_method' => $deliveryMethod,
+                'gift_wrap' => $validated['gift_wrap'] ?? false,
+                'gift_message' => $validated['gift_message'] ?? null,
                 'shipping_fullname' => $validated['shipping_fullname'],
                 'shipping_phone' => $validated['shipping_phone'] ?? null,
-                'shipping_address' => $validated['shipping_address'],
-                'shipping_city' => $validated['shipping_city'],
+                'shipping_address' => $validated['shipping_address'] ?? null,
+                'shipping_address_number' => $validated['shipping_address_number'] ?? null,
+                'shipping_city' => $validated['shipping_city'] ?? null,
+                'shipping_latitude' => $validated['shipping_latitude'] ?? null,
+                'shipping_longitude' => $validated['shipping_longitude'] ?? null,
                 'shipping_notes' => $validated['shipping_notes'] ?? null,
             ]);
+
+            if ($coupon) {
+                CouponRedemption::create([
+                    'coupon_id' => $coupon->id,
+                    'user_id' => $user->id,
+                    'order_id' => $order->id,
+                    'discount' => $discount,
+                    'redeemed_at' => now(),
+                ]);
+            }
 
             foreach ($lines as $line) {
                 OrderItem::create([
