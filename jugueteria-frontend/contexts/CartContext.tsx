@@ -169,9 +169,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (hydratedRef.current) return;
     hydratedRef.current = true;
 
+    // Solo se envían al servidor los artículos que aún no tienen id de servidor
+    // (carrito de invitado u operaciones que no llegaron a confirmarse). Así, al
+    // volver a iniciar sesión no se duplican los productos que ya están guardados
+    // en el carrito del usuario.
     const localItems = getCartSnapshot();
-    const request = localItems.length > 0
-      ? syncCartApi(localItems.map(toPayload))
+    const pendingItems = localItems.filter(item => !item.serverItemId);
+    const request = pendingItems.length > 0
+      ? syncCartApi(pendingItems.map(toPayload))
       : getCartApi();
 
     request

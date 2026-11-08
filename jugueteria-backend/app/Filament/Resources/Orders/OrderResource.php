@@ -11,6 +11,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
@@ -52,6 +53,13 @@ class OrderResource extends Resource
                             ->label('Subtotal (S/)')
                             ->disabled()
                             ->prefix('S/'),
+                        TextInput::make('discount')
+                            ->label('Descuento (S/)')
+                            ->disabled()
+                            ->prefix('S/'),
+                        TextInput::make('coupon_code')
+                            ->label('Cupón aplicado')
+                            ->disabled(),
                         TextInput::make('shipping')
                             ->label('Envío (S/)')
                             ->disabled()
@@ -99,15 +107,39 @@ class OrderResource extends Resource
                             ->label('Teléfono')
                             ->disabled(),
                         TextInput::make('shipping_address')
-                            ->label('Dirección')
+                            ->label('Dirección / calle')
                             ->disabled()
                             ->columnSpanFull(),
+                        TextInput::make('shipping_address_number')
+                            ->label('Número / piso')
+                            ->disabled(),
                         TextInput::make('shipping_city')
-                            ->label('Ciudad')
+                            ->label('Ciudad (referencia)')
+                            ->disabled(),
+                        Select::make('delivery_method')
+                            ->label('Método de entrega')
+                            ->options([
+                                'shipping' => 'Envío a domicilio',
+                                'pickup' => 'Recojo en tienda',
+                            ])
+                            ->disabled(),
+                        Toggle::make('gift_wrap')
+                            ->label('Envolver para regalo')
+                            ->disabled(),
+                        Textarea::make('gift_message')
+                            ->label('Dedicatoria')
+                            ->disabled()
+                            ->columnSpanFull(),
+                        TextInput::make('shipping_latitude')
+                            ->label('Latitud')
+                            ->disabled(),
+                        TextInput::make('shipping_longitude')
+                            ->label('Longitud')
                             ->disabled(),
                         Textarea::make('shipping_notes')
-                            ->label('Notas de envío')
-                            ->disabled(),
+                            ->label('Instrucciones de envío')
+                            ->disabled()
+                            ->columnSpanFull(),
                     ]),
                 Repeater::make('items')
                     ->label('Productos')
@@ -149,6 +181,11 @@ class OrderResource extends Resource
                 TextColumn::make('items_count')
                     ->label('Productos')
                     ->counts('items'),
+                TextColumn::make('coupon_code')
+                    ->label('Cupón')
+                    ->placeholder('—')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('total')
                     ->label('Total')
                     ->money('PEN')

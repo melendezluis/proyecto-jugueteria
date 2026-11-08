@@ -6,6 +6,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { updateProfileApi, changePasswordApi } from '@/services/api';
+import {
+  isStrongPassword,
+  PASSWORD_REQUIREMENTS,
+} from '@/utils/password';
 
 function getFirstErrors(err: unknown): Record<string, string> {
   const errors = (err as { errors?: Record<string, string[]> })?.errors;
@@ -129,6 +133,11 @@ export default function PerfilPage() {
     setPasswordSuccess('');
     setPasswordError('');
 
+    if (!isStrongPassword(newPassword)) {
+      setPasswordFieldErrors({ password: PASSWORD_REQUIREMENTS });
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
       setPasswordFieldErrors({ password_confirmation: 'Las contraseñas no coinciden.' });
       return;
@@ -242,7 +251,7 @@ export default function PerfilPage() {
           >
             <div>
               <h2 className="text-xl font-bold text-[#2B2D42]">Cambiar contraseña</h2>
-              <p className="text-sm text-gray-500 mt-1">Usa al menos 8 caracteres.</p>
+              <p className="text-sm text-gray-500 mt-1">{PASSWORD_REQUIREMENTS}</p>
             </div>
 
             {passwordSuccess && (
@@ -288,7 +297,7 @@ export default function PerfilPage() {
 
             <button
               type="submit"
-              disabled={passwordSaving || newPassword.length < 8}
+              disabled={passwordSaving || !isStrongPassword(newPassword)}
               className="w-full bg-[#F5B402] hover:bg-[#FFCA38] disabled:bg-gray-300 disabled:hover:bg-gray-300 text-[#2B2D42] font-semibold py-3.5 rounded-2xl transition-all"
             >
               {passwordSaving ? 'Actualizando...' : 'Actualizar contraseña'}

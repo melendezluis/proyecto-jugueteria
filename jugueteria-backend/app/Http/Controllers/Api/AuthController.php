@@ -6,18 +6,25 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 
 class AuthController
 {
+    private const DUMMY_PASSWORD_HASH = '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.';
+
     public function register(Request $request)
     {
+        $this->normalizeEmail($request);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
+            'password' => ['required', 'string', 'max:255', 'confirmed', PasswordRule::defaults()],
         ]);
 
         $user = User::create([
@@ -50,17 +57,42 @@ class AuthController
 
     public function login(Request $request)
     {
+        $this->normalizeEmail($request);
+
         $validated = $request->validate([
-            'email' => 'required|string|email',
-            'password' => 'required|string',
+            'email' => 'required|string|email|max:255',
+            'password' => 'required|string|max:255',
         ]);
+
+        $throttleKey = Str::transliterate($validated['email'].'|'.$request->ip());
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+
+            throw ValidationException::withMessages([
+                'email' => ["Demasiados intentos fallidos. Vuelve a intentarlo en {$seconds} segundos."],
+            ]);
+        }
 
         $user = User::where('email', $validated['email'])->first();
 
-        if (!$user || !Hash::check($validated['password'], $user->password)) {
+        // Se verifica siempre un hash, incluso si el correo no existe, para reducir
+        // la diferencia de tiempo que permitiría enumerar cuentas registradas.
+        $passwordHash = $user?->password ?? self::DUMMY_PASSWORD_HASH;
+
+        if (! $user || ! Hash::check($validated['password'], $passwordHash)) {
+            RateLimiter::hit($throttleKey, 300);
+
             throw ValidationException::withMessages([
                 'email' => ['Las credenciales proporcionadas son incorrectas.'],
             ]);
+        }
+
+        RateLimiter::clear($throttleKey);
+
+        if (Hash::needsRehash($user->password)) {
+            $user->password = Hash::make($validated['password']);
+            $user->save();
         }
 
         $token = $user->createToken('api-token')->plainTextToken;
@@ -105,6 +137,8 @@ class AuthController
 
     public function updateProfile(Request $request)
     {
+        $this->normalizeEmail($request);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($request->user()->id)],
@@ -130,11 +164,10 @@ class AuthController
     public function changePassword(Request $request)
     {
         $validated = $request->validate([
-            'current_password' => 'required|string',
-            'password' => 'required|string|min:8|confirmed',
+            'current_password' => ['required', 'string', 'max:255'],
+            'password' => ['required', 'string', 'max:255', 'confirmed', PasswordRule::defaults()],
         ], [
             'password.confirmed' => 'Las contraseñas no coinciden.',
-            'password.min' => 'La nueva contraseña debe tener al menos 8 caracteres.',
         ]);
 
         $user = $request->user();
@@ -154,6 +187,20 @@ class AuthController
         $user->password = Hash::make($validated['password']);
         $user->save();
 
+        // Se cierran las demás sesiones para que un token robado no siga activo
+        // después de que el cliente cambie su contraseña.
+        $currentToken = $request->user()->currentAccessToken();
+        $currentTokenId = $currentToken instanceof \Laravel\Sanctum\PersonalAccessToken
+            ? $currentToken->id
+            : null;
+        $otherTokens = $user->tokens();
+
+        if ($currentTokenId) {
+            $otherTokens->where('id', '!=', $currentTokenId);
+        }
+
+        $otherTokens->delete();
+
         return response()->json([
             'success' => true,
             'message' => 'Contraseña actualizada exitosamente.',
@@ -162,8 +209,10 @@ class AuthController
 
     public function forgotPassword(Request $request)
     {
+        $this->normalizeEmail($request);
+
         $request->validate([
-            'email' => 'required|string|email',
+            'email' => 'required|string|email|max:255',
         ]);
 
         Password::sendResetLink($request->only('email'));
@@ -177,13 +226,14 @@ class AuthController
 
     public function resetPassword(Request $request)
     {
+        $this->normalizeEmail($request);
+
         $validated = $request->validate([
-            'token' => 'required|string',
-            'email' => 'required|string|email',
-            'password' => 'required|string|min:8|confirmed',
+            'token' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255',
+            'password' => ['required', 'string', 'max:255', 'confirmed', PasswordRule::defaults()],
         ], [
             'password.confirmed' => 'Las contraseñas no coinciden.',
-            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
         ]);
 
         $status = Password::reset(
@@ -199,13 +249,10 @@ class AuthController
         );
 
         if ($status !== Password::PASSWORD_RESET) {
-            $messages = [
-                Password::INVALID_TOKEN => 'El enlace de restablecimiento es inválido o ha expirado.',
-                Password::INVALID_USER => 'No encontramos una cuenta con ese correo.',
-            ];
-
+            // Mismo mensaje para token inválido y correo inexistente, para no
+            // revelar qué cuentas están registradas.
             throw ValidationException::withMessages([
-                'email' => [$messages[$status] ?? 'No se pudo restablecer la contraseña.'],
+                'email' => ['El enlace de restablecimiento es inválido o ha expirado.'],
             ]);
         }
 
@@ -213,5 +260,14 @@ class AuthController
             'success' => true,
             'message' => 'Contraseña restablecida exitosamente. Ya puedes iniciar sesión.',
         ]);
+    }
+
+    private function normalizeEmail(Request $request): void
+    {
+        $email = $request->input('email');
+
+        if (is_string($email)) {
+            $request->merge(['email' => Str::lower(trim($email))]);
+        }
     }
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
-import { getProducts } from '@/services/api';
+import { getImageUrl, getProducts } from '@/services/api';
 import type { Product } from '@/types';
 
 function formatTime(value: number): string {
@@ -154,12 +154,23 @@ function OfferCard({ product }: { product: Product }) {
   const { addItem } = useCart();
   const hasOffer = product.offer_price !== null && product.offer_price < product.price;
   const discount = hasOffer ? Math.round((1 - product.offer_price! / product.price) * 100) : 0;
+  const mainImage = product.images?.find(img => img.is_main)?.image_path
+    ?? product.images?.[0]?.image_path
+    ?? null;
 
   return (
     <article className="w-[280px] shrink-0 snap-start bg-[#E7EBFE] rounded-3xl shadow hover:shadow-xl transition-all duration-300 overflow-hidden group flex flex-col">
       <Link href={`/products/${product.slug}`} className="block relative">
-        <div className="h-44 bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-7xl group-hover:scale-105 transition-transform">
-          🧸
+        <div className="h-44 bg-gradient-to-br from-sky-400 to-blue-600 relative overflow-hidden flex items-center justify-center">
+          <span className="absolute inset-0 flex items-center justify-center text-7xl select-none">🧸</span>
+          {mainImage && (
+            <img
+              src={getImageUrl(mainImage) ?? undefined}
+              alt={product.name}
+              className="relative w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              onError={e => { e.currentTarget.style.display = 'none'; }}
+            />
+          )}
         </div>
         <span className="absolute top-3 -left-10 z-10 -rotate-45 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-[11px] font-extrabold uppercase tracking-widest px-12 py-1.5 shadow-md">
           -{discount}% Oferta

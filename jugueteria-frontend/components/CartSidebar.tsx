@@ -54,7 +54,7 @@ function LockIcon({ className }: IconProps) {
 
 export default function CartSidebar() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, totalPrice } = useCart();
-  const { flat_rate: shippingCost } = useShippingConfig();
+  const { local_rate: shippingCost } = useShippingConfig();
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -215,13 +215,13 @@ export default function CartSidebar() {
                 <span className="font-semibold text-gray-800">S/ {totalPrice.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span>Envío</span>
+                <span>Envío (desde)</span>
                 <span className="font-semibold text-gray-800">S/ {shippingCost.toFixed(2)}</span>
               </div>
             </div>
 
             <div className="flex justify-between items-center bg-[#E7EBFE] rounded-2xl px-4 py-3">
-              <span className="font-bold text-gray-800">Total</span>
+              <span className="font-bold text-gray-800">Total estimado</span>
               <span className="text-2xl font-extrabold text-[#1B66D0]">
                 S/ {(totalPrice + shippingCost).toFixed(2)}
               </span>

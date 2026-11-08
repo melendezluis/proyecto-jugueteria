@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { getOrder, getPaymentStatus, createPreference, cancelOrderApi } from '@/services/api';
+import { getOrder, getPaymentStatus, createPreference, cancelOrderApi, getImageUrl } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import type { Order } from '@/types';
@@ -174,25 +174,47 @@ export default function OrderConfirmationPage() {
           <div className="bg-[#B0FFDC4D] rounded-2xl p-6 text-left mb-8">
             <p className="font-semibold text-gray-800 mb-4">Resumen del pedido</p>
             <div className="space-y-3">
-              {order.items.map(item => (
-                <div key={item.id} className="flex justify-between gap-4">
-                  <span className="text-gray-700 text-sm">
-                    {item.quantity} x {item.product_name}
-                    {item.color && <span className="text-gray-500"> ({item.color})</span>}
-                    {item.size && <span className="text-gray-500"> - {item.size}</span>}
-                  </span>
-                  <span className="text-sm font-medium text-gray-800">S/ {item.total.toFixed(2)}</span>
-                </div>
-              ))}
+              {order.items.map(item => {
+                const thumb = getImageUrl(item.product_image);
+                return (
+                  <div key={item.id} className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-11 h-11 rounded-xl bg-sky-100 flex items-center justify-center text-lg overflow-hidden flex-shrink-0">
+                        {thumb ? (
+                          <img src={thumb} alt={item.product_name} className="w-full h-full object-cover" />
+                        ) : (
+                          '🧸'
+                        )}
+                      </div>
+                      <span className="text-gray-700 text-sm">
+                        {item.quantity} x {item.product_name}
+                        {item.color && <span className="text-gray-500"> ({item.color})</span>}
+                        {item.size && <span className="text-gray-500"> - {item.size}</span>}
+                      </span>
+                    </div>
+                    <span className="text-sm font-medium text-gray-800 whitespace-nowrap">
+                      S/ {item.total.toFixed(2)}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
             <div className="border-t border-pink-200 mt-4 pt-4 space-y-2">
               <div className="flex justify-between text-sm text-gray-600">
                 <span>Subtotal</span>
                 <span>S/ {order.subtotal.toFixed(2)}</span>
               </div>
+              {order.discount > 0 && (
+                <div className="flex justify-between text-sm text-emerald-600">
+                  <span>Descuento{order.coupon_code ? ` (${order.coupon_code})` : ''}</span>
+                  <span>- S/ {order.discount.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm text-gray-600">
-                <span>Envío</span>
-                <span>S/ {order.shipping.toFixed(2)}</span>
+                <span>{order.delivery_method === 'pickup' ? 'Recojo en tienda' : 'Envío'}</span>
+                <span>
+                  {order.delivery_method === 'pickup' ? 'Sin costo' : `S/ ${order.shipping.toFixed(2)}`}
+                </span>
               </div>
               <div className="flex justify-between font-bold text-gray-800">
                 <span>Total</span>
@@ -202,15 +224,60 @@ export default function OrderConfirmationPage() {
           </div>
 
           <div className="bg-gray-50 rounded-2xl p-6 text-left mb-8">
-            <p className="font-semibold text-gray-800 mb-2">Dirección de envío</p>
-            <p className="text-gray-600 text-sm">
-              {order.shipping_fullname} · {order.shipping_city}
-            </p>
-            <p className="text-gray-600 text-sm">{order.shipping_address}</p>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <p className="font-semibold text-gray-800">
+                {order.delivery_method === 'pickup' ? 'Recojo en tienda' : 'Dirección de envío'}
+              </p>
+              <span className="text-xs font-semibold text-[#1B66D0] bg-[#E7EBFE] px-2.5 py-1 rounded-full">
+                {order.delivery_method_label}
+              </span>
+            </div>
+            <p className="text-gray-600 text-sm">{order.shipping_fullname}</p>
             {order.shipping_phone && (
               <p className="text-gray-600 text-sm">Tel: {order.shipping_phone}</p>
             )}
+            {order.delivery_method === 'shipping' ? (
+              <>
+                <p className="text-gray-600 text-sm">
+                  {order.shipping_address_full ??
+                    [order.shipping_address, order.shipping_address_number, order.shipping_city]
+                      .filter(Boolean)
+                      .join(', ')}
+                </p>
+                {order.shipping_latitude !== null && order.shipping_longitude !== null && (
+                  <a
+                    href={`https://www.openstreetmap.org/?mlat=${order.shipping_latitude}&mlon=${order.shipping_longitude}#map=18/${order.shipping_latitude}/${order.shipping_longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block mt-2 text-sm font-semibold text-[#1B66D0] hover:text-[#1558B8]"
+                  >
+                    Ver ubicación en el mapa
+                  </a>
+                )}
+                {order.shipping_notes && (
+                  <p className="text-gray-600 text-sm mt-3">
+                    <span className="font-medium">Instrucciones de envío:</span> {order.shipping_notes}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-gray-600 text-sm mt-1">
+                Te avisaremos cuando tu pedido esté listo para recoger.
+              </p>
+            )}
           </div>
+
+          {(order.gift_wrap || order.gift_message) && (
+            <div className="bg-rose-50 border border-rose-100 rounded-2xl p-6 text-left mb-8">
+              <p className="font-semibold text-gray-800 mb-2">🎁 Detalles del regalo</p>
+              {order.gift_wrap && (
+                <p className="text-gray-600 text-sm">Envoltura para regalo incluida.</p>
+              )}
+              {order.gift_message && (
+                <p className="text-gray-600 text-sm mt-1 italic">&ldquo;{order.gift_message}&rdquo;</p>
+              )}
+            </div>
+          )}
 
           {!isPaid && !isCancelled && (
             <div className="mb-8">

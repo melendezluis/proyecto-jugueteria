@@ -7,6 +7,7 @@ import {
   Kaushan_Script 
 } from "next/font/google";
 import Providers from "@/components/Providers";
+import { SITE_URL } from "@/lib/company";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -43,8 +44,44 @@ const kaushan = Kaushan_Script({
 });
 
 export const metadata: Metadata = {
-  title: "Juguetería El Gato - Juguetes que hacen feliz",
-  description: "Descubre nuestra colección de juguetes para todas las edades. LEGO, Barbie, Hot Wheels y más.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Juguetería El Gato - Juguetes que hacen feliz",
+    template: "%s | Juguetería El Gato",
+  },
+  description:
+    "Descubre nuestra colección de juguetes para todas las edades. LEGO, Barbie, Hot Wheels y más, con entrega en Chancay.",
+  keywords: [
+    "juguetería",
+    "juguetes",
+    "Chancay",
+    "Huaral",
+    "LEGO",
+    "Barbie",
+    "Hot Wheels",
+    "regalos para niños",
+  ],
+  openGraph: {
+    type: "website",
+    locale: "es_PE",
+    siteName: "Juguetería El Gato",
+    title: "Juguetería El Gato - Juguetes que hacen feliz",
+    description:
+      "Juguetes para todas las edades con entrega a domicilio en Chancay y recojo en tienda.",
+    url: SITE_URL,
+    images: ["/images/jugueteria_banner_no_borders.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Juguetería El Gato - Juguetes que hacen feliz",
+    description:
+      "Juguetes para todas las edades con entrega a domicilio en Chancay y recojo en tienda.",
+    images: ["/images/jugueteria_banner_no_borders.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({

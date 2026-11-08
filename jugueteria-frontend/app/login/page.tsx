@@ -80,6 +80,8 @@ export default function LoginPage() {
                 onFocus={() => setIsEmailFocused(true)}
                 onBlur={() => setIsEmailFocused(false)}
                 required
+                maxLength={255}
+                autoComplete="email"
                 className={`w-full px-4 py-3 pt-5 border-2 bg-[#F8F9FA] rounded-xl focus:outline-none text-[#2B2D42] transition-all duration-200 ${
                   isEmailFocused || email
                     ? 'border-[#6EBA92] ring-2 ring-[#6EBA92]/40'
@@ -109,6 +111,8 @@ export default function LoginPage() {
                 onFocus={() => setIsPasswordFocused(true)}
                 onBlur={() => setIsPasswordFocused(false)}
                 required
+                maxLength={255}
+                autoComplete="current-password"
                 className={`w-full px-4 py-3 pt-5 border-2 bg-[#F8F9FA] rounded-xl focus:outline-none text-[#2B2D42] transition-all duration-200 ${
                   isPasswordFocused || password
                     ? 'border-[#6EBA92] ring-2 ring-[#6EBA92]/40'
