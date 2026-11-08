@@ -79,9 +79,12 @@ class ProductController
             $query->where('is_featured', true);
         }
 
-        // Ordenamiento
+        // Ordenamiento (lista blanca para no aceptar columnas ni direcciones arbitrarias)
         $sortBy = $request->get('sort_by', 'created_at');
-        $sortOrder = $request->get('sort_order', 'desc');
+        $sortBy = in_array($sortBy, ['created_at', 'name', 'price', 'discount'], true)
+            ? $sortBy
+            : 'created_at';
+        $sortOrder = $request->get('sort_order') === 'asc' ? 'asc' : 'desc';
 
         if ($sortBy === 'discount') {
             // Porcentaje de descuento, de mayor a menor (los sin oferta van al final)
@@ -89,7 +92,7 @@ class ProductController
         } elseif ($sortBy === 'price') {
             // Ordena por el precio efectivo (oferta si existe)
             $query->orderByRaw('COALESCE(offer_price, price) '.($sortOrder === 'asc' ? 'ASC' : 'DESC'));
-        } elseif (in_array($sortBy, ['name', 'created_at'])) {
+        } elseif (in_array($sortBy, ['name', 'created_at'], true)) {
             $query->orderBy($sortBy, $sortOrder);
         }
 

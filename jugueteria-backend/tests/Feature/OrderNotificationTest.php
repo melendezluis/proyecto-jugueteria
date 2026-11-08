@@ -63,7 +63,8 @@ class OrderNotificationTest extends TestCase
 
         $this->postJson('/api/orders', [
             'shipping_fullname' => 'Cliente Prueba',
-            'shipping_address' => 'Av. Prueba 123',
+            'shipping_address' => 'Av. Prueba',
+            'shipping_address_number' => '123',
             'shipping_city' => 'Lima',
             'items' => [
                 ['product_id' => $product->id, 'quantity' => 1],
@@ -97,7 +98,8 @@ class OrderNotificationTest extends TestCase
 
         $this->postJson('/api/orders', [
             'shipping_fullname' => 'Cliente Prueba',
-            'shipping_address' => 'Av. Prueba 123',
+            'shipping_address' => 'Av. Prueba',
+            'shipping_address_number' => '123',
             'shipping_city' => 'Lima',
             'items' => [
                 ['product_id' => $product->id, 'quantity' => 1],

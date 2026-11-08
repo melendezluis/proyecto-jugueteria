@@ -91,10 +91,7 @@ class AdminLocaleTest extends TestCase
                 'images' => [
                     ['image_path' => [$this->png()], 'is_main' => true],
                 ],
-            ]);
-
-        $this->get(route('filament.admin.resources.products.index'))
-            ->assertOk()
-            ->assertSee('Creado');
+            ])
+            ->assertNotified('Creado');
     }
 }

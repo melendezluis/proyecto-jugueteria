@@ -126,6 +126,11 @@ export function getBrands() {
 export interface ShippingConfig {
   flat_rate: number;
   free_threshold: number | null;
+  local_rate: number;
+  nearby_rate: number;
+  local_radius_km: number;
+  max_radius_km: number;
+  center: { lat: number; lng: number };
 }
 
 export function getShippingConfig() {
@@ -190,16 +195,42 @@ export function resetPasswordApi(token: string, email: string, password: string,
 
 // Orders
 export interface CreateOrderPayload {
+  delivery_method: 'shipping' | 'pickup';
+  coupon_code?: string;
+  gift_wrap?: boolean;
+  gift_message?: string;
   shipping_fullname: string;
   shipping_phone?: string;
-  shipping_address: string;
-  shipping_city: string;
+  shipping_address?: string;
+  shipping_address_number?: string;
+  shipping_city?: string;
+  shipping_latitude?: number;
+  shipping_longitude?: number;
   shipping_notes?: string;
   items: { product_id: number; quantity: number; variant_id?: number }[];
 }
 
 export function createOrder(payload: CreateOrderPayload) {
   return fetchApi<OrderResponse>('/orders', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export interface CouponValidationResponse {
+  success: boolean;
+  data: {
+    code: string;
+    type: 'percentage' | 'fixed';
+    value: number;
+    subtotal: number;
+    discount: number;
+    total: number;
+  };
+}
+
+export function validateCouponApi(code: string, items: CartItemPayload[]) {
+  return fetchApi<CouponValidationResponse>('/coupons/validate', {
+    method: 'POST',
+    body: JSON.stringify({ code, items }),
+  });
 }
 
 export function getOrders() {
@@ -285,6 +316,41 @@ export function syncCartApi(items: CartItemPayload[]) {
   return fetchApi<CartResponse>('/cart/sync', {
     method: 'POST',
     body: JSON.stringify({ items }),
+  });
+}
+
+// Libro de Reclamaciones
+export interface CreateComplaintPayload {
+  full_name: string;
+  document_type: 'DNI' | 'CE' | 'Pasaporte' | 'RUC';
+  document_number: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  order_number?: string;
+  type: 'reclamo' | 'queja';
+  product_service: string;
+  amount?: number;
+  detail: string;
+  request: string;
+  accepted: true;
+}
+
+export interface ComplaintResponse {
+  success: boolean;
+  message: string;
+  data: {
+    code: string;
+    status: string;
+    status_label: string;
+    created_at: string;
+  };
+}
+
+export function createComplaint(payload: CreateComplaintPayload) {
+  return fetchApi<ComplaintResponse>('/complaints', {
+    method: 'POST',
+    body: JSON.stringify(payload),
   });
 }
 
