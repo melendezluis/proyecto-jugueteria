@@ -44,10 +44,11 @@ class RolePermissionSeeder extends Seeder
             'brand-list',
         ]);
 
-        // Asignar rol admin al usuario test
-        $user = User::where('email', 'test@example.com')->first();
-        if ($user) {
-            $user->assignRole('admin');
+        if (! app()->environment('production')) {
+            $user = User::where('email', 'test@example.com')->first();
+            if ($user) {
+                $user->assignRole('admin');
+            }
         }
 
         echo "✅ Roles y permisos creados exitosamente!\n";

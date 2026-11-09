@@ -18,9 +18,14 @@ function isRelativeUrl(url: string): boolean {
   return url.startsWith('/');
 }
 
+function getServerApiUrl(): string {
+  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+  return `${backendUrl.replace(/\/+$/, '')}/api`;
+}
+
 function getApiBase(): string {
   if (!isRelativeUrl(ENV_API_URL)) return ENV_API_URL;
-  return typeof window === 'undefined' ? 'http://localhost:8000/api' : ENV_API_URL;
+  return typeof window === 'undefined' ? getServerApiUrl() : ENV_API_URL;
 }
 
 function getAssetsBase(): string {
