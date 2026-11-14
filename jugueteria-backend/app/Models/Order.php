@@ -13,6 +13,9 @@ class Order extends Model
     protected $fillable = [
         'order_number',
         'user_id',
+        'guest_email',
+        'guest_token',
+        'guest_token_hash',
         'coupon_id',
         'coupon_code',
         'subtotal',
@@ -38,7 +41,13 @@ class Order extends Model
         'shipping_notes',
     ];
 
+    protected $hidden = [
+        'guest_token',
+        'guest_token_hash',
+    ];
+
     protected $casts = [
+        'guest_token' => 'encrypted',
         'subtotal' => 'decimal:2',
         'discount' => 'decimal:2',
         'shipping' => 'decimal:2',
@@ -77,6 +86,17 @@ class Order extends Model
     public function items()
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function guestAccessUrl(string $url): string
+    {
+        if (! $this->guest_token) {
+            return $url;
+        }
+
+        $separator = str_contains($url, '?') ? '&' : '?';
+
+        return $url.$separator.'token='.urlencode($this->guest_token);
     }
 
     public function getDeliveryMethodLabelAttribute()

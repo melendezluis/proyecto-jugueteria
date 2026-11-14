@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ShippingController;
+use App\Http\Controllers\Api\VisitController;
 use Illuminate\Support\Facades\Route;
 
 // ====================== API PARA LA JUGUETERÍA ======================
@@ -40,6 +41,18 @@ Route::post('/complaints', [ComplaintController::class, 'store'])->middleware('t
 
 Route::post('/payment/webhook', [PaymentController::class, 'webhook']);
 
+// Estadísticas anónimas de visitas
+Route::post('/visits', [VisitController::class, 'store'])->middleware('throttle:30,1');
+
+// Checkout público (invitados con token de pedido) y cupones
+Route::post('/orders', [OrderController::class, 'store'])->middleware('throttle:10,1');
+Route::get('/orders/{id}', [OrderController::class, 'show'])->middleware('throttle:60,1');
+Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel'])->middleware('throttle:10,1');
+Route::post('/orders/{id}/checkout', [PaymentController::class, 'checkout'])->middleware('throttle:10,1');
+Route::get('/orders/{id}/payment-status', [PaymentController::class, 'status'])->middleware('throttle:60,1');
+Route::post('/coupons/validate', [CouponController::class, 'validateCoupon'])
+    ->middleware('throttle:20,1');
+
 // Rutas protegidas (requieren token Sanctum)
 Route::middleware('auth:sanctum')->group(function () {
     // Perfil
@@ -57,18 +70,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/cart/items/{id}', [CartController::class, 'removeItem']);
     Route::delete('/cart', [CartController::class, 'destroy']);
 
-    Route::post('/coupons/validate', [CouponController::class, 'validateCoupon'])
-        ->middleware('throttle:20,1');
-
-    // Órdenes (cualquier cliente autenticado)
+    // Órdenes (listado del cliente autenticado)
     Route::get('/orders', [OrderController::class, 'index']);
-    Route::get('/orders/{id}', [OrderController::class, 'show']);
-    Route::post('/orders', [OrderController::class, 'store']);
-    Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel']);
-
-    // Pago con Mercado Pago
-    Route::post('/orders/{id}/checkout', [PaymentController::class, 'checkout']);
-    Route::get('/orders/{id}/payment-status', [PaymentController::class, 'status']);
 
     // Productos (solo con permisos)
     Route::middleware('can:product-create')->group(function () {

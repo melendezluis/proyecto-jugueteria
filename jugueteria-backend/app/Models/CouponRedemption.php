@@ -12,6 +12,7 @@ class CouponRedemption extends Model
     protected $fillable = [
         'coupon_id',
         'user_id',
+        'guest_email',
         'order_id',
         'discount',
         'redeemed_at',

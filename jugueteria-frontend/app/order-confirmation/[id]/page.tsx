@@ -1,9 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { getOrder, getPaymentStatus, createPreference, cancelOrderApi, getImageUrl } from '@/services/api';
+import {
+  getOrder,
+  getPaymentStatus,
+  createPreference,
+  cancelOrderApi,
+  getGuestOrderToken,
+  rememberGuestOrderToken,
+  getImageUrl,
+} from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import type { Order } from '@/types';
@@ -38,7 +46,6 @@ const STATUS_TONE: Record<string, string> = {
 
 export default function OrderConfirmationPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { clearCart } = useCart();
@@ -51,38 +58,50 @@ export default function OrderConfirmationPage() {
   const [cancelError, setCancelError] = useState('');
 
   const paymentNotice = searchParams.get('status');
+  const queryToken = searchParams.get('token');
   const orderId = Number(id);
   const validId = Number.isInteger(orderId) && orderId > 0;
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.replace('/login');
-    }
-  }, [authLoading, isAuthenticated, router]);
+    if (!validId || !queryToken) return;
+    rememberGuestOrderToken(orderId, queryToken);
+  }, [orderId, queryToken, validId]);
 
   useEffect(() => {
-    if (authLoading || !isAuthenticated) return;
-    if (!validId) return;
-    getOrder(orderId)
-      .then(res => {
+    if (authLoading || !validId) return;
+
+    async function loadOrder() {
+      const token = getGuestOrderToken(orderId) ?? queryToken;
+
+      if (!isAuthenticated && !token) {
+        setError('No pudimos identificar este pedido. Revisa el enlace que enviamos a tu correo.');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const res = await getOrder(orderId, token);
         setOrder(res.data);
-        setLoading(false);
-      })
-      .catch(() => {
+      } catch {
         setError('No se pudo cargar tu pedido');
+      } finally {
         setLoading(false);
-      });
-  }, [orderId, validId, isAuthenticated, authLoading]);
+      }
+    }
+
+    void loadOrder();
+  }, [orderId, validId, isAuthenticated, authLoading, queryToken]);
 
   useEffect(() => {
     if (!order || order.status !== 'pending') return;
     const timer = setInterval(() => {
-      getPaymentStatus(orderId)
+      const token = getGuestOrderToken(orderId) ?? queryToken;
+      getPaymentStatus(orderId, token)
         .then(res => setOrder(res.data))
         .catch(() => {});
     }, 5000);
     return () => clearInterval(timer);
-  }, [order, orderId]);
+  }, [order, orderId, queryToken]);
 
   useEffect(() => {
     if (order?.status === 'paid') {
@@ -94,7 +113,8 @@ export default function OrderConfirmationPage() {
     setPaying(true);
     setPayError('');
     try {
-      const preference = await createPreference(orderId);
+      const token = getGuestOrderToken(orderId) ?? queryToken;
+      const preference = await createPreference(orderId, token);
       window.location.href = preference.data.init_point;
     } catch (err) {
       const error = err as ApiError;
@@ -109,7 +129,8 @@ export default function OrderConfirmationPage() {
     setCancelling(true);
     setCancelError('');
     try {
-      const res = await cancelOrderApi(orderId);
+      const token = getGuestOrderToken(orderId) ?? queryToken;
+      const res = await cancelOrderApi(orderId, token);
       setOrder(res.data);
     } catch (err) {
       const error = err as ApiError;
@@ -170,6 +191,14 @@ export default function OrderConfirmationPage() {
                 registrado con éxito.</>
               )}
           </p>
+
+          {order.guest_email && (
+            <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-left text-sm text-blue-800">
+              Enviamos la confirmación y el detalle de tu compra a{' '}
+              <span className="font-semibold">{order.guest_email}</span>. Guarda el enlace de ese correo
+              para volver a consultar tu pedido.
+            </div>
+          )}
 
           <div className="bg-[#B0FFDC4D] rounded-2xl p-6 text-left mb-8">
             <p className="font-semibold text-gray-800 mb-4">Resumen del pedido</p>
@@ -323,12 +352,14 @@ export default function OrderConfirmationPage() {
               <ArrowLeftIcon className="w-5 h-5" />
               Seguir comprando
             </Link>
-            <Link
-              href="/orders"
-              className="bg-[#7CBF9C] hover:bg-[#8BCFA9] active:bg-[#5EA57E] text-gray-700 font-semibold px-8 py-3 rounded-full transition-all active:scale-[0.98]"
-            >
-              Ver mis pedidos
-            </Link>
+            {isAuthenticated && (
+              <Link
+                href="/orders"
+                className="bg-[#7CBF9C] hover:bg-[#8BCFA9] active:bg-[#5EA57E] text-gray-700 font-semibold px-8 py-3 rounded-full transition-all active:scale-[0.98]"
+              >
+                Ver mis pedidos
+              </Link>
+            )}
           </div>
         </div>
       </div>

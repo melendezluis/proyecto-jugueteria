@@ -6,6 +6,7 @@ use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Notifications\OrderStatusNotification;
 use App\Services\MercadoPagoService;
+use App\Support\OrderAccess;
 use App\Support\OrderNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -32,9 +33,7 @@ class PaymentController
      */
     public function checkout(Request $request, $orderId)
     {
-        $order = Order::with('items')
-            ->where('user_id', $request->user()->id)
-            ->findOrFail($orderId);
+        $order = OrderAccess::findOrFail($request, (int) $orderId);
 
         if ($order->status !== 'pending') {
             return response()->json([
@@ -58,15 +57,19 @@ class PaymentController
             $orderId = $order->id;
             $frontendUrl = rtrim(config('mercadopago.frontend_url'), '/');
             $notificationUrl = config('mercadopago.webhook_url');
+            $confirmationUrl = $order->guestAccessUrl("{$frontendUrl}/order-confirmation/{$orderId}");
+            $withStatus = fn (string $status): string => $confirmationUrl
+                .(str_contains($confirmationUrl, '?') ? '&' : '?')
+                .'status='.$status;
 
             $preferenceRequest = [
                 'items' => $items,
                 'external_reference' => $order->order_number,
                 'notification_url' => $notificationUrl,
                 'back_urls' => [
-                    'success' => "{$frontendUrl}/order-confirmation/{$orderId}?status=success",
-                    'pending' => "{$frontendUrl}/order-confirmation/{$orderId}?status=pending",
-                    'failure' => "{$frontendUrl}/order-confirmation/{$orderId}?status=failure",
+                    'success' => $withStatus('success'),
+                    'pending' => $withStatus('pending'),
+                    'failure' => $withStatus('failure'),
                 ],
                 'statement_descriptor' => 'EL GATO',
             ];
@@ -120,9 +123,7 @@ class PaymentController
      */
     public function status(Request $request, $orderId)
     {
-        $order = Order::with('items')
-            ->where('user_id', $request->user()->id)
-            ->findOrFail($orderId);
+        $order = OrderAccess::findOrFail($request, (int) $orderId);
 
         if ($order->preference_id && $this->guardHasAccessToken()) {
             try {
@@ -248,8 +249,8 @@ class PaymentController
                 'payment_method' => $payment->payment_method_id,
             ]);
 
-            $order->loadMissing('user');
-            OrderNotifier::send($order->user, new OrderStatusNotification(
+            $order->loadMissing(['user', 'items']);
+            OrderNotifier::send($order, new OrderStatusNotification(
                 order: $order,
                 type: 'order-rejected',
                 subject: "No pudimos procesar el pago de tu pedido {$order->order_number}",

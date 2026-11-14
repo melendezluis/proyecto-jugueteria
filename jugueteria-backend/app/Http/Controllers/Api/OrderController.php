@@ -9,9 +9,11 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Services\CouponService;
 use App\Services\OrderPricingService;
+use App\Support\OrderAccess;
 use App\Support\Shipping;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class OrderController
@@ -25,8 +27,10 @@ class OrderController
     {
         $validated = $request->validated();
         $user = $request->user();
+        $guestEmail = $user ? null : $validated['guest_email'];
+        $guestToken = $user ? null : Str::random(64);
 
-        $order = DB::transaction(function () use ($user, $validated) {
+        $order = DB::transaction(function () use ($user, $guestEmail, $guestToken, $validated) {
             $pricing = $this->pricing->buildLines($validated['items'], true);
             $lines = $pricing['lines'];
             $subtotal = $pricing['subtotal'];
@@ -59,6 +63,7 @@ class OrderController
                     $subtotal,
                     $user,
                     true,
+                    $guestEmail,
                 );
                 $coupon = $couponQuote['coupon'];
                 $discount = $couponQuote['discount'];
@@ -68,7 +73,10 @@ class OrderController
             $total = round($subtotal - $discount + $shipping, 2);
 
             $order = Order::create([
-                'user_id' => $user->id,
+                'user_id' => $user?->id,
+                'guest_email' => $guestEmail,
+                'guest_token' => $guestToken,
+                'guest_token_hash' => $guestToken ? hash('sha256', $guestToken) : null,
                 'coupon_id' => $coupon?->id,
                 'coupon_code' => $couponCode,
                 'subtotal' => $subtotal,
@@ -92,7 +100,8 @@ class OrderController
             if ($coupon) {
                 CouponRedemption::create([
                     'coupon_id' => $coupon->id,
-                    'user_id' => $user->id,
+                    'user_id' => $user?->id,
+                    'guest_email' => $guestEmail,
                     'order_id' => $order->id,
                     'discount' => $discount,
                     'redeemed_at' => now(),
@@ -119,7 +128,7 @@ class OrderController
                 }
             }
 
-            $user->cart()?->delete();
+            $user?->cart()?->delete();
 
             return $order;
         });
@@ -128,6 +137,7 @@ class OrderController
             'success' => true,
             'message' => 'Pedido creado exitosamente.',
             'data' => new OrderResource($order->load('items')),
+            'guest_token' => $guestToken,
         ], 201);
     }
 
@@ -152,9 +162,7 @@ class OrderController
 
     public function show(Request $request, $id)
     {
-        $order = Order::with('items')
-            ->where('user_id', $request->user()->id)
-            ->findOrFail($id);
+        $order = OrderAccess::findOrFail($request, (int) $id);
 
         return response()->json([
             'success' => true,
@@ -164,9 +172,7 @@ class OrderController
 
     public function cancel(Request $request, $id)
     {
-        $order = Order::with('items')
-            ->where('user_id', $request->user()->id)
-            ->findOrFail($id);
+        $order = OrderAccess::findOrFail($request, (int) $id);
 
         if ($order->status !== 'pending') {
             return response()->json([

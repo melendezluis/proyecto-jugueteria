@@ -77,6 +77,9 @@ class AdminDashboardWidgetsTest extends TestCase
             ->assertSee('Ventas')
             ->assertSee('Productos activos')
             ->assertSee('Stock bajo')
+            ->assertSee('Visitas hoy')
+            ->assertSee('Visitantes únicos hoy')
+            ->assertSee('En línea ahora')
             ->assertSee('Ventas por día (últimos 14 días)')
             ->assertSee('Últimos pedidos')
             ->assertSee('Productos con stock bajo');

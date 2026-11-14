@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class StoreOrderRequest extends FormRequest
@@ -21,12 +22,23 @@ class StoreOrderRequest extends FormRequest
         if ($this->has('gift_wrap')) {
             $this->merge(['gift_wrap' => $this->boolean('gift_wrap')]);
         }
+
+        if ($this->filled('guest_email')) {
+            $this->merge(['guest_email' => Str::lower(trim((string) $this->input('guest_email')))]);
+        }
     }
 
     public function rules(): array
     {
         return [
             'delivery_method' => ['required', Rule::in(['shipping', 'pickup'])],
+            'guest_email' => [
+                Rule::requiredIf(fn () => ! $this->user()),
+                'nullable',
+                'string',
+                'email',
+                'max:255',
+            ],
             'coupon_code' => ['nullable', 'string', 'max:50'],
             'gift_wrap' => ['nullable', 'boolean'],
             'gift_message' => ['nullable', 'string', 'max:1000'],

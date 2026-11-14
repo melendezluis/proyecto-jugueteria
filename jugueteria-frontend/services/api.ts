@@ -198,9 +198,35 @@ export function resetPasswordApi(token: string, email: string, password: string,
   );
 }
 
+export function trackPageVisit(path: string) {
+  return fetchApi<{ success: boolean }>('/visits', {
+    method: 'POST',
+    body: JSON.stringify({ path }),
+    keepalive: true,
+  });
+}
+
 // Orders
+const GUEST_ORDER_TOKEN_PREFIX = 'guest_order_token_';
+
+export function rememberGuestOrderToken(orderId: number, token: string) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(`${GUEST_ORDER_TOKEN_PREFIX}${orderId}`, token);
+}
+
+export function getGuestOrderToken(orderId: number): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(`${GUEST_ORDER_TOKEN_PREFIX}${orderId}`);
+}
+
+function orderAccessHeaders(orderId: number, token?: string | null): Record<string, string> | undefined {
+  const orderToken = token ?? getGuestOrderToken(orderId);
+  return orderToken ? { 'X-Order-Token': orderToken } : undefined;
+}
+
 export interface CreateOrderPayload {
   delivery_method: 'shipping' | 'pickup';
+  guest_email?: string;
   coupon_code?: string;
   gift_wrap?: boolean;
   gift_message?: string;
@@ -231,10 +257,10 @@ export interface CouponValidationResponse {
   };
 }
 
-export function validateCouponApi(code: string, items: CartItemPayload[]) {
+export function validateCouponApi(code: string, items: CartItemPayload[], guestEmail?: string) {
   return fetchApi<CouponValidationResponse>('/coupons/validate', {
     method: 'POST',
-    body: JSON.stringify({ code, items }),
+    body: JSON.stringify({ code, items, guest_email: guestEmail || undefined }),
   });
 }
 
@@ -242,12 +268,15 @@ export function getOrders() {
   return fetchApi<OrdersResponse>('/orders');
 }
 
-export function getOrder(id: number) {
-  return fetchApi<OrderResponse>(`/orders/${id}`);
+export function getOrder(id: number, token?: string | null) {
+  return fetchApi<OrderResponse>(`/orders/${id}`, { headers: orderAccessHeaders(id, token) });
 }
 
-export function cancelOrderApi(id: number) {
-  return fetchApi<OrderResponse>(`/orders/${id}/cancel`, { method: 'POST' });
+export function cancelOrderApi(id: number, token?: string | null) {
+  return fetchApi<OrderResponse>(`/orders/${id}/cancel`, {
+    method: 'POST',
+    headers: orderAccessHeaders(id, token),
+  });
 }
 
 // Mercado Pago
@@ -259,12 +288,17 @@ export interface PreferenceResponse {
   };
 }
 
-export function createPreference(orderId: number) {
-  return fetchApi<PreferenceResponse>(`/orders/${orderId}/checkout`, { method: 'POST' });
+export function createPreference(orderId: number, token?: string | null) {
+  return fetchApi<PreferenceResponse>(`/orders/${orderId}/checkout`, {
+    method: 'POST',
+    headers: orderAccessHeaders(orderId, token),
+  });
 }
 
-export function getPaymentStatus(orderId: number) {
-  return fetchApi<OrderResponse>(`/orders/${orderId}/payment-status`);
+export function getPaymentStatus(orderId: number, token?: string | null) {
+  return fetchApi<OrderResponse>(`/orders/${orderId}/payment-status`, {
+    headers: orderAccessHeaders(orderId, token),
+  });
 }
 
 // Carrito persistente (requiere sesión)

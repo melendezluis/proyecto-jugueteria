@@ -118,6 +118,7 @@ export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'completed' | 'cancel
 export interface Order {
   id: number;
   order_number: string;
+  guest_email: string | null;
   coupon_code: string | null;
   subtotal: number;
   discount: number;
@@ -150,6 +151,7 @@ export interface Order {
 export interface OrderResponse {
   success: boolean;
   data: Order;
+  guest_token?: string | null;
 }
 
 export interface OrdersResponse {

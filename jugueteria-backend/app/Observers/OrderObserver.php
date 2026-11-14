@@ -12,11 +12,11 @@ class OrderObserver
 {
     public function created(Order $order): void
     {
-        $order->loadMissing('user');
+        $order->loadMissing(['user', 'items']);
 
         $total = number_format((float) $order->total, 2, '.', '');
 
-        OrderNotifier::send($order->user, new OrderStatusNotification(
+        OrderNotifier::send($order, new OrderStatusNotification(
             order: $order,
             type: 'order-created',
             subject: "Pedido {$order->order_number} registrado",
@@ -40,10 +40,10 @@ class OrderObserver
             $this->releaseStock($order);
             $this->releaseCoupon($order);
 
-            $order->loadMissing('user');
+            $order->loadMissing(['user', 'items']);
             $total = number_format((float) $order->total, 2, '.', '');
 
-            OrderNotifier::send($order->user, new OrderStatusNotification(
+            OrderNotifier::send($order, new OrderStatusNotification(
                 order: $order,
                 type: 'order-cancelled',
                 subject: "Pedido {$order->order_number} cancelado",
@@ -55,9 +55,9 @@ class OrderObserver
         }
 
         if ($newStatus === 'paid' && $originalStatus !== 'paid') {
-            $order->loadMissing('user');
+            $order->loadMissing(['user', 'items']);
 
-            OrderNotifier::send($order->user, new OrderStatusNotification(
+            OrderNotifier::send($order, new OrderStatusNotification(
                 order: $order,
                 type: 'order-paid',
                 subject: "¡Pago confirmado para tu pedido {$order->order_number}!",
@@ -69,11 +69,11 @@ class OrderObserver
         }
 
         if ($newStatus === 'shipped' && $originalStatus !== 'shipped') {
-            $order->loadMissing('user');
+            $order->loadMissing(['user', 'items']);
 
             $isPickup = $order->delivery_method === 'pickup';
 
-            OrderNotifier::send($order->user, new OrderStatusNotification(
+            OrderNotifier::send($order, new OrderStatusNotification(
                 order: $order,
                 type: 'order-shipped',
                 subject: $isPickup

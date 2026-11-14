@@ -6,6 +6,7 @@ use App\Filament\Widgets\DashboardStats;
 use App\Filament\Widgets\LowStockProducts;
 use App\Filament\Widgets\RecentOrders;
 use App\Filament\Widgets\SalesChart;
+use App\Filament\Widgets\VisitorStats;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -40,6 +41,7 @@ class AdminPanelProvider extends PanelProvider
                 Dashboard::class,
             ])
             ->widgets([
+                VisitorStats::class,
                 DashboardStats::class,
                 SalesChart::class,
                 RecentOrders::class,

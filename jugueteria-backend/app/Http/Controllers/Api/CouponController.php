@@ -19,6 +19,7 @@ class CouponController
             $validated['code'],
             $pricingResult['subtotal'],
             $request->user(),
+            guestEmail: $validated['guest_email'] ?? null,
         );
 
         return response()->json([
