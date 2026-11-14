@@ -256,16 +256,21 @@ class CouponTest extends TestCase
         $this->assertSame(75.0, (float) $response->json('data.total'));
     }
 
-    public function test_coupon_validation_requires_authentication(): void
+    public function test_coupon_validation_is_available_to_guests(): void
     {
-        $product = $this->makeProduct();
+        $product = $this->makeProduct(price: 100);
+        $this->makeCoupon(['type' => Coupon::TYPE_FIXED, 'value' => 25]);
 
-        $this->postJson('/api/coupons/validate', [
-            'code' => 'VERANO10',
+        $response = $this->postJson('/api/coupons/validate', [
+            'code' => 'verano10',
+            'guest_email' => 'invitado@example.com',
             'items' => [
                 ['product_id' => $product->id, 'quantity' => 1],
             ],
-        ])->assertUnauthorized();
+        ])->assertOk()->assertJsonPath('success', true);
+
+        $this->assertSame('VERANO10', $response->json('data.code'));
+        $this->assertSame(25.0, (float) $response->json('data.discount'));
     }
 
     public function test_order_can_be_found_without_coupon(): void

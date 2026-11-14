@@ -23,15 +23,20 @@ class CouponService
             ->first();
     }
 
-    public function validate(string $code, float $subtotal, User $user, bool $lock = false): Coupon
-    {
+    public function validate(
+        string $code,
+        float $subtotal,
+        ?User $user,
+        bool $lock = false,
+        ?string $guestEmail = null,
+    ): Coupon {
         $coupon = $this->find($code, $lock);
 
         if (! $coupon) {
             $this->fail('El cupón no existe o no es válido.');
         }
 
-        $this->assertUsable($coupon, $subtotal, $user);
+        $this->assertUsable($coupon, $subtotal, $user, $guestEmail);
 
         return $coupon;
     }
@@ -52,9 +57,14 @@ class CouponService
     /**
      * @return array{coupon: Coupon, discount: float}
      */
-    public function quote(string $code, float $subtotal, User $user, bool $lock = false): array
-    {
-        $coupon = $this->validate($code, $subtotal, $user, $lock);
+    public function quote(
+        string $code,
+        float $subtotal,
+        ?User $user,
+        bool $lock = false,
+        ?string $guestEmail = null,
+    ): array {
+        $coupon = $this->validate($code, $subtotal, $user, $lock, $guestEmail);
 
         return [
             'coupon' => $coupon,
@@ -69,7 +79,7 @@ class CouponService
             ->update(['released_at' => now()]);
     }
 
-    private function assertUsable(Coupon $coupon, float $subtotal, User $user): void
+    private function assertUsable(Coupon $coupon, float $subtotal, ?User $user, ?string $guestEmail = null): void
     {
         if (! $coupon->is_active) {
             $this->fail('Este cupón no está disponible.');
@@ -95,10 +105,14 @@ class CouponService
             }
         }
 
-        if ($coupon->usage_limit_per_user !== null) {
+        if ($coupon->usage_limit_per_user !== null && ($user || $guestEmail)) {
             $userUses = $coupon->redemptions()
                 ->whereNull('released_at')
-                ->where('user_id', $user->id)
+                ->when(
+                    $user,
+                    fn ($query) => $query->where('user_id', $user->id),
+                    fn ($query) => $query->where('guest_email', $guestEmail),
+                )
                 ->count();
 
             if ($userUses >= $coupon->usage_limit_per_user) {

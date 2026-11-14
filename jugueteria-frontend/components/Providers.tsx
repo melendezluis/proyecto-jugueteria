@@ -7,6 +7,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import CartSidebar from '@/components/CartSidebar';
 import CookieConsent from '@/components/CookieConsent';
+import VisitTracker from '@/components/VisitTracker';
 
 export default function Providers({ children }: { children: ReactNode }) {
   return (
@@ -17,6 +18,7 @@ export default function Providers({ children }: { children: ReactNode }) {
         <Footer />
         <CartSidebar />
         <CookieConsent />
+        <VisitTracker />
       </CartProvider>
     </AuthProvider>
   );

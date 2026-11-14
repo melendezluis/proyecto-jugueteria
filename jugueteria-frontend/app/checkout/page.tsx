@@ -1,13 +1,19 @@
 'use client';
 
-import { useCallback, useEffect, useState, FormEvent, Fragment } from 'react';
+import { useCallback, useState, FormEvent, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useShippingConfig, quoteShipping } from '@/hooks/useShippingConfig';
-import { createOrder, createPreference, getImageUrl, validateCouponApi } from '@/services/api';
+import {
+  createOrder,
+  createPreference,
+  getImageUrl,
+  rememberGuestOrderToken,
+  validateCouponApi,
+} from '@/services/api';
 import type { PickedAddress } from '@/components/checkout/MapPicker';
 
 const MapPicker = dynamic(() => import('@/components/checkout/MapPicker'), {
@@ -53,6 +59,18 @@ function UserIcon({ className }: IconProps) {
         strokeLinecap="round"
         strokeLinejoin="round"
         d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
+      />
+    </svg>
+  );
+}
+
+function MailIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={className}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"
       />
     </svg>
   );
@@ -236,12 +254,13 @@ function ErrorText({ message }: { message?: string }) {
   return message ? <p className="text-sm text-red-600 mt-1.5">{message}</p> : null;
 }
 
-function CheckoutForm({ user }: { user: CheckoutUser }) {
+function CheckoutForm({ user }: { user: CheckoutUser | null }) {
   const router = useRouter();
   const { items, totalPrice } = useCart();
   const shippingConfig = useShippingConfig();
 
-  const [fullname, setFullname] = useState(user.name);
+  const [fullname, setFullname] = useState(user?.name ?? '');
+  const [email, setEmail] = useState(user?.email ?? '');
   const [phone, setPhone] = useState('');
   const [deliveryMethod, setDeliveryMethod] = useState<'shipping' | 'pickup'>('shipping');
   const [address, setAddress] = useState('');
@@ -307,7 +326,8 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
           product_id: item.product.id,
           quantity: item.quantity,
           variant_id: item.variant?.id,
-        }))
+        })),
+        user ? undefined : email.trim()
       );
 
       setAppliedCoupon({ code: res.data.code, discount: res.data.discount, itemsKey: couponItemsKey });
@@ -336,6 +356,14 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
     const cleanPhone = phone.replace(/[\s-]/g, '');
     if (fullname.trim().length < 3) {
       errors.shipping_fullname = 'Ingresa tu nombre completo.';
+    }
+    if (!user) {
+      const cleanEmail = email.trim();
+      if (!cleanEmail) {
+        errors.guest_email = 'Ingresa tu correo para enviarte la confirmación.';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+        errors.guest_email = 'Ingresa un correo válido.';
+      }
     }
     if (!cleanPhone) {
       errors.shipping_phone = 'Ingresa tu teléfono.';
@@ -368,6 +396,7 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
     try {
       const res = await createOrder({
         delivery_method: deliveryMethod,
+        guest_email: user ? undefined : email.trim(),
         coupon_code: coupon?.code,
         gift_wrap: giftWrap,
         gift_message: giftMessage.trim() || undefined,
@@ -385,8 +414,13 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
         })),
       });
 
+      const guestToken = res.guest_token ?? null;
+      if (guestToken) {
+        rememberGuestOrderToken(res.data.id, guestToken);
+      }
+
       try {
-        const preference = await createPreference(res.data.id);
+        const preference = await createPreference(res.data.id, guestToken);
         window.location.href = preference.data.init_point;
       } catch {
         router.push(`/order-confirmation/${res.data.id}`);
@@ -446,6 +480,13 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
           </div>
 
           <div className="space-y-5">
+            {!user && (
+              <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                Estás comprando como invitado. No necesitas crear una cuenta; enviaremos la
+                confirmación y el detalle de tu compra a tu correo.
+              </div>
+            )}
+
             <div>
               <label htmlFor="fullname" className="block text-sm font-semibold text-gray-600 mb-1.5">
                 Nombre completo
@@ -465,6 +506,32 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
               </div>
               <ErrorText message={fieldErrors.shipping_fullname} />
             </div>
+
+            {!user ? (
+              <div>
+                <label htmlFor="email" className="block text-sm font-semibold text-gray-600 mb-1.5">
+                  Correo electrónico
+                </label>
+                <div className="relative">
+                  <MailIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    placeholder="tucorreo@ejemplo.com"
+                    autoComplete="email"
+                    className={inputWithIconClass(!!fieldErrors.guest_email)}
+                  />
+                </div>
+                <ErrorText message={fieldErrors.guest_email} />
+              </div>
+            ) : (
+              <p className="rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-500">
+                Enviaremos la confirmación de tu compra a <span className="font-semibold text-gray-700">{user.email}</span>.
+              </p>
+            )}
 
             <div>
               <label htmlFor="phone" className="block text-sm font-semibold text-gray-600 mb-1.5">
@@ -935,15 +1002,8 @@ function CheckoutForm({ user }: { user: CheckoutUser }) {
 }
 
 export default function CheckoutPage() {
-  const router = useRouter();
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { items } = useCart();
-
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.replace('/login');
-    }
-  }, [authLoading, isAuthenticated, router]);
 
   if (authLoading) {
     return (
@@ -951,10 +1011,6 @@ export default function CheckoutPage() {
         <p className="text-2xl text-gray-500 animate-pulse">Cargando...</p>
       </div>
     );
-  }
-
-  if (!isAuthenticated || !user) {
-    return null;
   }
 
   return (

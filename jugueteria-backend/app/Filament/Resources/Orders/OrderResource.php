@@ -47,7 +47,10 @@ class OrderResource extends Resource
                             ->label('N° de Orden')
                             ->disabled(),
                         TextInput::make('user.name')
-                            ->label('Cliente')
+                            ->label('Cliente registrado')
+                            ->disabled(),
+                        TextInput::make('guest_email')
+                            ->label('Correo del invitado')
                             ->disabled(),
                         TextInput::make('subtotal')
                             ->label('Subtotal (S/)')
@@ -177,7 +180,13 @@ class OrderResource extends Resource
                     ->sortable(),
                 TextColumn::make('user.name')
                     ->label('Cliente')
+                    ->placeholder('Invitado')
                     ->searchable(),
+                TextColumn::make('guest_email')
+                    ->label('Correo invitado')
+                    ->placeholder('—')
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('items_count')
                     ->label('Productos')
                     ->counts('items'),
