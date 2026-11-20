@@ -63,12 +63,12 @@ const FAQS = [
   {
     question: '¿Cómo elimino mi cuenta o mis datos?',
     answer:
-      'Escríbenos a ventas@elgato.pe indicando tu solicitud. Atenderemos tu pedido conforme a nuestra Política de Privacidad y a la normativa aplicable.',
+      'Escríbenos a ventas@jugueteriaelgato.com indicando tu solicitud. Atenderemos tu pedido conforme a nuestra Política de Privacidad y a la normativa aplicable.',
   },
   {
     question: '¿Dónde presento un reclamo o queja?',
     answer:
-      'Puedes usar nuestro Libro de Reclamaciones o escribirnos a ventas@elgato.pe. También puedes acudir a la tienda en el horario de atención.',
+      'Puedes usar nuestro Libro de Reclamaciones o escribirnos a ventas@jugueteriaelgato.com. También puedes acudir a la tienda en el horario de atención.',
   },
 ];
 

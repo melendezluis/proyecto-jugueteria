@@ -4,7 +4,7 @@ export const COMPANY = {
     process.env.NEXT_PUBLIC_COMPANY_LEGAL_NAME?.trim() || 'Juguetería El Gato',
   ruc: process.env.NEXT_PUBLIC_COMPANY_RUC?.trim() || '',
   address: 'Av. Buenos Aires 1209, Chancay - Huaral, Perú',
-  email: 'ventas@elgato.pe',
+  email: 'ventas@jugueteriaelgato.com',
   phone: '+51 928 049 345',
   phoneHref: '+51928049345',
   whatsapp: '51928049345',
@@ -13,7 +13,7 @@ export const COMPANY = {
 } as const;
 
 export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL?.trim() || 'https://elgato.pe'
+  process.env.NEXT_PUBLIC_SITE_URL?.trim() || 'https://jugueteriaelgato.com'
 ).replace(/\/$/, '');
 
 export const LEGAL_LINKS = [
