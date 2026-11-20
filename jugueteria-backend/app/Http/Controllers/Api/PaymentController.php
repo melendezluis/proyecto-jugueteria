@@ -82,9 +82,7 @@ class PaymentController
 
             $order->update(['preference_id' => $preference->id]);
 
-            $initPoint = str_starts_with(config('mercadopago.access_token'), 'TEST-')
-                ? $preference->sandbox_init_point
-                : $preference->init_point;
+            $initPoint = $preference->init_point;
 
             return response()->json([
                 'success' => true,

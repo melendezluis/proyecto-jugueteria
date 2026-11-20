@@ -7,8 +7,9 @@ return [
     | Mercado Pago
     |--------------------------------------------------------------------------
     |
-    | Credenciales de la pasarela de pagos. Usa credenciales de prueba (TEST-*)
-    | en desarrollo y credenciales de producción (APP_USR-*) en producción.
+    | Credenciales de la pasarela de pagos. Usa las credenciales de la pestaña
+    | Prueba en desarrollo y las de Producción en producción. El Access Token
+    | de prueba puede comenzar con APP_USR.
     |
     */
 

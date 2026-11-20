@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
 use App\Notifications\OrderStatusNotification;
+use App\Services\MercadoPagoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
@@ -170,6 +171,41 @@ class GuestCheckoutTest extends TestCase
         $this->getJson("/api/orders/{$orderId}/payment-status", ['X-Order-Token' => $token])
             ->assertOk()
             ->assertJsonPath('data.id', $orderId);
+    }
+
+    public function test_checkout_always_returns_init_point(): void
+    {
+        Notification::fake();
+
+        config(['mercadopago.access_token' => 'TEST-123456']);
+
+        $product = $this->makeProduct();
+        $response = $this->placeGuestOrder($product)->assertCreated();
+        $token = $response->json('guest_token');
+        $orderId = $response->json('data.id');
+
+        $preference = (object) [
+            'id' => 'pref-123456',
+            'init_point' => 'https://www.mercadopago.com/init',
+            'sandbox_init_point' => 'https://sandbox.mercadopago.com/init',
+        ];
+
+        $this->mock(MercadoPagoService::class, function ($mock) use ($preference) {
+            $mock->shouldReceive('createPreference')
+                ->once()
+                ->andReturn($preference);
+        });
+
+        $this->postJson("/api/orders/{$orderId}/checkout", [], ['X-Order-Token' => $token])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.preference_id', 'pref-123456')
+            ->assertJsonPath('data.init_point', 'https://www.mercadopago.com/init');
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $orderId,
+            'preference_id' => 'pref-123456',
+        ]);
     }
 
     public function test_guest_coupon_redemption_is_recorded_without_a_user(): void
